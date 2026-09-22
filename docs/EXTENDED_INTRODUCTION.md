@@ -215,9 +215,9 @@ example above but with three adjustments summed instead of one.
 
 If it works, the payoff is big: safety steering learned once, cheaply, on a
 small model; carried over to large models for free; and composed across
-several values at once. If it doesn't work, the roadmap commits to publishing
-the negative result honestly — knowing *that* toxic subspaces don't transfer,
-and why, is itself a contribution.
+several values at once. If it doesn't work, the roadmap records the negative result honestly —
+knowing *that* toxic subspaces don't transfer, and why, remains useful
+for the project's next steps.
 
 ## 7. What to read next
 

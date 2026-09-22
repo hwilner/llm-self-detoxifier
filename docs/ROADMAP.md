@@ -57,7 +57,7 @@ TSM-MA claims both: *"learn once on a cheap proxy, transfer the safety subspace 
 
 ### Failure modes (anticipated honestly)
 
-- The toxic subspace may be more architecture-specific than refusal vectors, so transfer could simply fail — a publishable negative result.
+- The toxic subspace may be more architecture-specific than refusal vectors, so transfer could simply fail — a negative result that narrows the project scope.
 - Miscalibrated transferred margins → weak detoxification or fluency collapse.
 - Conflicting attribute pushes → incoherent text or degenerate loops; the interference study in step 4 exists precisely to measure this.
 - The Procrustes orthogonality assumption may fail on weak proxies (resolved per `docs/METHODS.md` U4).
