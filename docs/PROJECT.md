@@ -68,3 +68,27 @@ These issues have no unresolved dependencies ("READY"):
 ---
 
 *Note: this in-repo board is a snapshot for contributors. Creating a real GitHub Project board (with custom fields, views, and automation) requires repository-owner permissions and is an owner action.*
+
+## Live GitHub Project
+
+The public [contribution board](https://github.com/users/hwilner/projects/11) mirrors the active issue backlog. **Implementation, tests, documentation, evaluation, and scoped extensions to the original project are welcome from all contributors.** Choose a `Ready` card only after reading its boundary and acceptance criteria; the GitHub issue body remains the source of truth for scope and dependencies.
+
+
+## Refined contributor child cards
+
+The original broad cards below remain **open parent/integration tasks**. They were not deleted, replaced, closed, or assigned. Each small linked child is an unassigned, focused contribution unit; contributors should claim one child rather than duplicate parent work.
+
+| Parent task | Linked child issue | Focus |
+| --- | --- | --- |
+| #6 | [#18](https://github.com/hwilner/llm-self-detoxifier/issues/18) | [XS] Frozen benchmark configuration and deterministic rerun command |
+| #6 | [#19](https://github.com/hwilner/llm-self-detoxifier/issues/19) | [XS] Benchmark execution and automatic-plus-human evaluation record collection |
+| #6 | [#20](https://github.com/hwilner/llm-self-detoxifier/issues/20) | [XS] Honest benchmark results report with signed-rank and bootstrap outputs |
+| #10 | [#21](https://github.com/hwilner/llm-self-detoxifier/issues/21) | [XS] Serializable subspace format with save-load round-trip tests |
+| #10 | [#22](https://github.com/hwilner/llm-self-detoxifier/issues/22) | [XS] GPT-2-L SASA smoke reproduction with recorded seed and configuration |
+| #10 | [#23](https://github.com/hwilner/llm-self-detoxifier/issues/23) | [XS] Llama-3.1-8B SASA smoke reproduction with recorded seed and configuration |
+| #12 | [#24](https://github.com/hwilner/llm-self-detoxifier/issues/24) | [XS] Deterministic paired hidden-state collection with provenance |
+| #12 | [#25](https://github.com/hwilner/llm-self-detoxifier/issues/25) | [XS] Transfer, direct, and identity-or-PCA baseline decoding runs |
+| #12 | [#26](https://github.com/hwilner/llm-self-detoxifier/issues/26) | [XS] Locked statistical and perplexity result table generation |
+| #13 | [#27](https://github.com/hwilner/llm-self-detoxifier/issues/27) | [XS] Multi-margin composition API with unit tests |
+| #13 | [#28](https://github.com/hwilner/llm-self-detoxifier/issues/28) | [XS] Per-attribute schedule and attribute-margin fixtures |
+| #13 | [#29](https://github.com/hwilner/llm-self-detoxifier/issues/29) | [S] Multi-attribute interference-study runner and outputs |
