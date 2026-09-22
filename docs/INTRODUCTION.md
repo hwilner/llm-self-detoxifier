@@ -2,6 +2,10 @@
 
 This document explains, from the ground up, the problem this repository tackles, the line of research it belongs to, how SASA works in plain mathematical language, what results have been reported, and where the field is heading. It is written for a technical reader (comfortable with basic linear algebra and neural networks) who is new to controlled text generation.
 
+![Concept figure: SASA decoding — the prompt's hidden state is located relative to a learned hyperplane separating toxic and non-toxic regions; each candidate token's signed margin is added to its logit (scaled by alpha), yielding a safer next token.](figures/concept_figure.svg)
+
+*Figure 1. SASA in one pass: read the hidden state, measure its margin to the toxic/non-toxic hyperplane for each candidate next token, add alpha times that margin to the logits, and sample — no external models involved.*
+
 ## 1. The problem: LLMs sometimes produce toxic text
 
 Large language models (LLMs) are trained on enormous corpora of internet text. That text contains toxicity — insults, slurs, threats, profanity-laced abuse — and LLMs learn to reproduce it. Even when a model is generally well-behaved, certain prompts can reliably coax toxic continuations out of it. Gehman et al. introduced **RealToxicityPrompts** [7], a benchmark of sentence prefixes drawn from web text, and showed that even models with standard mitigations degenerate into toxic generations on a substantial fraction of prompts. Toxicity of generated text is typically scored automatically, most commonly with the Perspective API classifier [7], which returns a probability that text would be perceived as toxic.
