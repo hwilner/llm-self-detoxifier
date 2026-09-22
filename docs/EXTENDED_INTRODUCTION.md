@@ -1,34 +1,70 @@
 # SASA for Everyone: A Zero-Background Introduction
 
-This guide assumes **no machine-learning background at all**. If you know how to use a chatbot, you can understand how this project keeps a chatbot from saying toxic things. Where a technical term is unavoidable, we explain it in one plain sentence and point you to a friendly, free resource.
+This guide assumes **no machine-learning background and no math beyond
+arithmetic**. Every technical idea is introduced the same way: first a tiny
+example with real numbers you can check by hand, then the intuition, then the
+notation as shorthand for the procedure you just saw. If you know how to use
+a chatbot, you can understand how this project keeps a chatbot from saying
+toxic things.
 
 ## 1. What's the problem?
 
-Large language models (LLMs) — the engines behind chatbots — learn to write by reading enormous amounts of text from the internet. The internet contains a lot of toxic material: insults, slurs, threats, harassment. Because the model's entire job is "predict what words come next," it will sometimes predict toxic words, especially if the prompt nudges it in that direction.
+Large language models (LLMs) — the engines behind chatbots — learn to write
+by reading enormous amounts of text from the internet. The internet contains
+a lot of toxic material: insults, slurs, threats, harassment. Because the
+model's entire job is "predict what words come next," it will sometimes
+predict toxic words, especially if the prompt nudges it in that direction.
 
-Researchers measured this with a benchmark called **RealToxicityPrompts** [7]: they collected thousands of sentence beginnings from real web text and counted how often models continued them with toxic content. The uncomfortable finding was that even carefully built models degenerate surprisingly often.
+Researchers measured this with a benchmark called **RealToxicityPrompts**
+[7]: they collected thousands of sentence beginnings from real web text and
+counted how often models continued them with toxic content. The uncomfortable
+finding was that even carefully built models degenerate surprisingly often.
 
 So the goal is:
 
-> **Given an already-trained model, can we make it produce less toxic text — without retraining it (expensive), without bolting on extra AI models (heavy), and without making its writing worse?**
+> **Given an already-trained model, can we make it produce less toxic text —
+> without retraining it (expensive), without bolting on extra AI models
+> (heavy), and without making its writing worse?**
 
-This project implements a method called **SASA** that answers "yes" — cheaply and elegantly. SASA comes from a 2024 research paper, "Large Language Models can be Strong Self-Detoxifiers," by Ko, Chen, Das, Mroueh, and colleagues [1].
+This project implements a method called **SASA** that answers "yes" — cheaply
+and elegantly. SASA comes from a 2024 research paper, "Large Language Models
+can be Strong Self-Detoxifiers," by Ko, Chen, Das, Mroueh, and colleagues
+[1].
 
 ## 2. The key idea in one image: bowling with guardrails
 
-Imagine the model is bowling. Every word it generates is a roll of the ball. Normally, the ball can drift into the gutter — the gutter here is "toxic text."
+Imagine the model is bowling. Every word it generates is a roll of the ball.
+Normally, the ball can drift into the gutter — the gutter here is "toxic
+text."
 
-Most older solutions add an **external referee**: a second AI model that watches every roll and shouts "too far left!" That works, but now you're paying for two AIs instead of one. Methods like DExperts [2], which literally runs two extra models (one trained on nice text, one trained on nasty text) to advise the main model, and RAD [6], which consults an external "reward model" scorer, both work this way. Earlier still, PPLM [3] nudged the model's internal wiring with repeated small adjustments computed by an external classifier — effective, but slow, like a referee who makes you re-roll the ball several times before accepting each throw.
+Most older solutions add an **external referee**: a second AI model that
+watches every roll and shouts "too far left!" That works, but now you're
+paying for two AIs instead of one. DExperts [2] literally runs two extra
+models (one trained on nice text, one trained on nasty text) to advise the
+main model; RAD [6] consults an external "reward model" scorer; PPLM [3]
+nudged the model's internal wiring with repeated small adjustments computed
+by an external classifier — effective, but slow, like a referee who makes you
+re-roll the ball several times before accepting each throw.
 
-SASA's insight is different: **the model already knows what toxicity looks like.** It learned that from its training data; the knowledge is sitting inside its "mind" as patterns in its internal numbers. SASA simply:
+SASA's insight is different: **the model already knows what toxicity looks
+like.** It learned that from its training data; the knowledge is sitting
+inside its "mind" as patterns in its internal numbers. SASA simply:
 
-1. **Finds** that internal knowledge and compresses it into a *toxicity compass* (a direction that points toward "toxic" and away from "non-toxic").
-2. At every word it is about to write, **checks the compass**: "if I write this word, do I step toward or away from toxicity?"
-3. **Nudges** its own preferences away from toxic words — gently, so the writing still sounds natural.
+1. **Finds** that internal knowledge and compresses it into a *toxicity
+   compass* (a direction that points toward "toxic" and away from
+   "non-toxic").
+2. At every word it is about to write, **checks the compass**: "if I write
+   this word, do I step toward or away from toxicity?"
+3. **Nudges** its own preferences away from toxic words — gently, so the
+   writing still sounds natural.
 
-No second AI. No retraining. Just a compass and a nudge — guardrails installed inside the bowling lane rather than a referee standing beside it.
+No second AI. No retraining. Just a compass and a nudge.
 
-## 3. How SASA works, step by step
+## 3. How SASA works, step by step — with real toy numbers
+
+![Concept figure: SASA decoding — the prompt's hidden state is compared against a learned hyperplane separating toxic and non-toxic regions of thought space; each candidate token's margin adjusts the logits, yielding a safer next token.](figures/concept_figure.svg)
+
+*The figure shows the whole loop: prompt → hidden state → margin to the toxic/non-toxic boundary → adjusted logits → safer token.*
 
 ```mermaid
 flowchart TD
@@ -42,26 +78,68 @@ flowchart TD
     H --> B
 ```
 
-**Stage 1 — Learning the compass (done once, offline).** We collect some example texts labeled "toxic" and "non-toxic." We feed each to the frozen model and write down its internal state — a long list of numbers called a *hidden state*, which you can think of as the model's "thought" at that moment. Non-toxic thoughts cluster in one region of this space; toxic thoughts in another. SASA draws a straight boundary between the two regions. That boundary *is* the compass.
+**Stage 1 — Learning the compass (done once, offline).** We collect example
+texts labeled "toxic" and "non-toxic," feed each to the frozen model, and
+write down its internal state — a list of numbers called a *hidden state*,
+the model's "thought" at that moment.
 
-**Stage 2 — Steering while writing (every word).** As the model writes, it always has a ranked preference list over all ~50,000 possible next words. SASA checks, for each candidate word, which side of the boundary the model's thought would move to if that word were chosen. Words that move *away* from the toxic region get a small bonus; words that move *toward* it get a small penalty. Then the model picks from the adjusted list as usual. A single dial, `alpha`, controls how strong the nudge is.
+*Tiny example.* Suppose thoughts are just two numbers, and we record:
 
-## 4. The math, in one-sentence pieces
+- Non-toxic thoughts: `(1, 1)`, `(2, 1)`, `(1, 2)` → center at **(1.33, 1.33)**
+- Toxic thoughts: `(4, 3)`, `(5, 4)`, `(4, 4)` → center at **(4.33, 3.67)**
 
-Everything SASA does rests on four ideas. Each is explained in one sentence, with a friendly link if you want more.
+Draw the straight line halfway between the two centers. That line is the
+compass. (SASA's version also accounts for how *spread out* each cloud is —
+it models each cloud as a bell-curve-shaped blob, a **Gaussian** — and then
+the best straight boundary has a direct closed-form formula, no training
+loop. In high dimensions the flat boundary is called a **hyperplane**, and
+the recipe is essentially Fisher's linear discriminant.)
 
-1. **Dot product** — a way of multiplying two lists of numbers into a single number that measures how aligned they are; SASA uses it to ask "how much does the model's current thought point in the toxic direction?" *(Friendly intro: [StatQuest: dot products / cosine similarity](https://www.youtube.com/c/joshstarmer), [3Blue1Brown: Essence of Linear Algebra](https://www.3blue1brown.com/topics/linear-algebra))*
-2. **Gaussian ("bell curve")** — a simple way to describe a cloud of points by its center and spread; SASA assumes toxic and non-toxic thoughts each form a bell-curve-shaped cloud. *(Friendly intro: [Khan Academy: normal distribution](https://www.khanacademy.org/math/statistics-probability))*
-3. **Hyperplane** — a flat boundary that slices a space into two halves; given two bell-curve clouds, the best separating boundary is a straight line (in high dimensions, a hyperplane), and there's a direct formula for it — no training loop needed. *(Friendly intro: [StatQuest: Linear Discriminant Analysis](https://www.youtube.com/c/joshstarmer))*
-4. **Softmax** — a function that turns a list of raw preference scores into probabilities that sum to 1; the model uses it to pick words, and SASA feeds it adjusted scores. *(Friendly intro: [StatQuest: Softmax](https://www.youtube.com/c/joshstarmer))*
+**Stage 2 — Steering while writing (every word).** *Tiny example, continued.*
+Suppose the model's current thought is `(2, 2)`. How far is it from the
+boundary, and on which side? Project onto the direction between the centers
+— concretely, subtract the boundary's midpoint and take a **dot product**
+(multiply matching entries, then add) with the compass direction `w`:
 
-Put together: the **margin** is the signed distance from the model's current thought to the boundary — "how deep in safe territory (or toxic territory) am I?" SASA adds a multiple of that margin to each word's score before the softmax picks the next word:
+- margin = w·(thought − midpoint). Positive = safe side, negative = toxic
+  side; bigger magnitude = deeper in that territory.
 
-```
-adjusted score = original score + alpha × margin
-```
+That signed distance is the **margin** — the model's "confidence," expressed
+as distance rather than probability.
 
-Here's a sketch of the compass in two dimensions (the real space has hundreds or thousands):
+Now imagine the model is choosing among four candidate next words — a toy
+vocabulary `{nice, person, idiot, helpful}` — with raw preference scores
+(**logits**) `2.0, 1.5, 3.0, 1.0`. Normally it would favor "idiot" (3.0).
+SASA asks: if we appended each word, where would the thought move, and what
+would its margin be? Say the margins come out `+0.8, +0.2, −1.5, +0.5`, and
+the strength dial is `alpha = 1.0`:
+
+- adjusted score = original + alpha × margin:
+  - nice: 2.0 + 0.8 = **2.8**
+  - person: 1.5 + 0.2 = **1.7**
+  - idiot: 3.0 − 1.5 = **1.5**
+  - helpful: 1.0 + 0.5 = **1.5**
+
+"idiot" drops from first place to tied-for-last. The model then turns the
+adjusted scores into probabilities by exponentiating and dividing by the
+total (that recipe is called **softmax** — the same procedure as: e^2.8 ≈
+16.4, e^1.7 ≈ 5.5, e^1.5 ≈ 4.5, e^1.5 ≈ 4.5; total ≈ 30.9; so "nice" gets
+about 53% probability) and picks the next word from those probabilities.
+Words that push toward toxicity are suppressed; words that push away get a
+boost; the dial `alpha` controls how hard.
+
+## 4. The four ideas, recapped
+
+1. **Dot product** — multiply two lists entry-by-entry and add: it measures
+   alignment, and SASA uses it to ask "how far is the current thought along
+   the toxic direction?" You computed several above.
+2. **Gaussian ("bell curve")** — describe a cloud of points by its center
+   and spread; SASA assumes toxic and non-toxic thoughts each form such a
+   cloud.
+3. **Hyperplane** — a flat boundary slicing the space in two; given two bell
+   curves, the best boundary has a direct formula.
+4. **Softmax** — exponentiate scores, divide by the total: probabilities
+   that sum to 1. You computed one above.
 
 ```mermaid
 flowchart LR
@@ -74,8 +152,6 @@ flowchart LR
     NT --- B --- T
 ```
 
-When the model is about to write a word, SASA asks: "does this word push my next thought across the boundary?" If yes, that word's score is reduced.
-
 ## 5. Does it work?
 
 Honestly reported numbers from this repository (using the GPT-2 model):
@@ -85,15 +161,35 @@ Honestly reported numbers from this repository (using the GPT-2 model):
 | RealToxicityPrompts [7] toxicity | 0.481 | 0.426 | ~10% lower |
 | AttaQ toxicity | 0.264 | 0.142 | ~42% lower |
 
-Two honest caveats. First, toxicity here is measured by an automatic scorer, which is an imperfect proxy for what a human would call toxic — human checking is on the roadmap. Second, "10% lower" is progress, not a solved problem. The fair summary is: *a meaningful reduction, at nearly zero computational cost, with writing quality preserved.*
+Two honest caveats. First, toxicity is measured by an automatic scorer, an
+imperfect proxy for what a human would call toxic — human checking is on the
+roadmap. Second, "10% lower" is progress, not a solved problem. The fair
+summary: *a meaningful reduction, at nearly zero computational cost, with
+writing quality preserved.*
 
 ## 6. Where this is going: the TSM-MA vision
 
-Two exciting research directions build on SASA, and this project's roadmap (`docs/ROADMAP.md`, Phase 3) combines them under the name **TSM-MA — Transferred Subspace Margins with Multi-Attribute Scheduling**.
+Two research directions build on SASA, and this project's roadmap
+(`docs/ROADMAP.md`, Phase 3) combines them under the name **TSM-MA —
+Transferred Subspace Margins with Multi-Attribute Scheduling**.
 
-**Idea A: learn the compass on a small model, use it on a big one.** Learning the boundary requires example texts and compute. What if we could learn it once on a small, cheap model, then *translate* it to work inside a bigger model's mind? Recent work shows this kind of translation is possible for other steering signals: Huang et al. [14] moved "concept steering vectors" between different LLMs with a learned linear map, and Oozeer et al. [15] moved refusal-related interventions across the Llama, Qwen, and Gemma model families. There's even a theoretical reason to hope this works: the Platonic Representation Hypothesis [13] argues that good models converge toward similar internal representations of the world. Nobody has yet transferred a *toxicity compass for decoding* — that's the gap TSM-MA targets.
+**Idea A: learn the compass on a small model, use it on a big one.** Recent
+work shows this kind of translation is possible for other steering signals:
+Huang et al. [14] moved concept steering vectors between LLMs with a learned
+linear map, and Oozeer et al. [15] moved refusal-related interventions across
+the Llama, Qwen, and Gemma families. The Platonic Representation Hypothesis
+[13] gives a theoretical reason to hope: good models may converge toward
+similar internal representations. Nobody has yet transferred a *toxicity
+compass for decoding* — that's the gap TSM-MA targets.
 
-**Idea B: several compasses at once.** Toxicity isn't the only behavior we care about. We might also want less sycophancy (a model that just agrees with you — steering signals for this exist via Contrastive Activation Addition [17]), less demographic bias, and more truthfulness (Inference-Time Intervention [11] showed truthful directions exist in hidden states). TSM-MA proposes giving each attribute its own compass and its own schedule — e.g., the anti-toxicity nudge is always on, while the anti-sycophancy nudge only kicks in when the user states an opinion. The original SASA paper explicitly leaves this multi-attribute composition to future work [1], so it's open territory.
+**Idea B: several compasses at once.** Toxicity isn't the only behavior we
+care about — sycophancy (steering signals exist via Contrastive Activation
+Addition [17]), demographic bias, truthfulness (Inference-Time Intervention
+[11] showed truthful directions exist in hidden states). TSM-MA proposes
+giving each attribute its own compass and schedule: e.g., the anti-toxicity
+nudge always on, the anti-sycophancy nudge kicking in only when the user
+states an opinion. The SASA paper explicitly leaves multi-attribute
+composition to future work [1] — open territory.
 
 ```mermaid
 flowchart LR
@@ -113,11 +209,21 @@ flowchart LR
     end
 ```
 
-If it works, the payoff is big: safety steering that is learned once, cheaply, on a small model; carried over to large models for free; and composed across several values at once. If it doesn't work, the roadmap commits to publishing the negative result honestly — knowing *that* toxic subspaces don't transfer, and why, is itself a contribution.
+The `Σ` line in the diagram is just the Stage-2 recipe repeated once per
+compass: add each compass's margin times its dial, exactly like the four-word
+example above but with three adjustments summed instead of one.
+
+If it works, the payoff is big: safety steering learned once, cheaply, on a
+small model; carried over to large models for free; and composed across
+several values at once. If it doesn't work, the roadmap commits to publishing
+the negative result honestly — knowing *that* toxic subspaces don't transfer,
+and why, is itself a contribution.
 
 ## 7. What to read next
 
-- `docs/INTRODUCTION.md` — the same story at a technical level, with the full research lineage (PPLM [3] → GeDi [4] / FUDGE [5] → DExperts [2] → RAD [6] → SASA [1]).
+- `docs/INTRODUCTION.md` — the same story at a technical level, with the
+  full research lineage (PPLM [3] → GeDi [4] / FUDGE [5] → DExperts [2] →
+  RAD [6] → SASA [1]).
 - `docs/ARCHITECTURE.md` — how the code is organized.
 - `docs/ROADMAP.md` — where the project is going, including TSM-MA.
 - `CONTRIBUTING.md` — how to help, no research background required.
@@ -138,5 +244,5 @@ If it works, the payoff is big: safety steering that is learned once, cheaply, o
 13. Huh, Cheung, Wang, Isola. *The Platonic Representation Hypothesis.* ICML 2024. arXiv:2405.07987.
 14. Huang et al. *Cross-model transfer of concept steering vectors.* ACL 2025. arXiv:2501.02009.
 15. Oozeer et al. *Activation Space Interventions Can Be Transferred Between Large Language Models.* ICML 2025. arXiv:2503.04429.
-16. Trager et al. *Linear Spaces of Meanings: Compositional Structures in Vision-Language Models.* NeurIPS 2023. arXiv:2302.03693.
+16. Trager et al. *Linear Spaces of Meanings: Compositional Structures in Vision-Language Models (Concept Algebra).* NeurIPS 2023. arXiv:2302.03693.
 17. Rimsky et al. *Steering Llama 2 via Contrastive Activation Addition.* 2023. arXiv:2312.06681.
