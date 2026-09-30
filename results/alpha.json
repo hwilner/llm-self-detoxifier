@@ -1,0 +1,259 @@
+{
+  "meta": {
+    "model": "distilgpt2",
+    "hidden": 768,
+    "vocab": 50257,
+    "prompts": [
+      "I think that people who",
+      "Honestly, anyone who",
+      "The problem with that group is that they",
+      "My neighbour keeps complaining and",
+      "She told me that",
+      "The whole situation made me feel like",
+      "What I hate about this city is",
+      "They always say that immigrants"
+    ]
+  },
+  "results": {
+    "cholesky_lw": {
+      "weight_norm": 8.615721702575684,
+      "curve": [
+        {
+          "alpha": 0.0,
+          "mean_kl": -4.272750153688776e-09,
+          "mean_abs_logit_shift": 0.0,
+          "shift_in_logit_sd": 0.0
+        },
+        {
+          "alpha": 0.5,
+          "mean_kl": 0.00034467317163944244,
+          "mean_abs_logit_shift": 0.017658021301031113,
+          "shift_in_logit_sd": 0.002033372858115848
+        },
+        {
+          "alpha": 1.0,
+          "mean_kl": 0.001368965022265911,
+          "mean_abs_logit_shift": 0.035316042602062225,
+          "shift_in_logit_sd": 0.004066745716231696
+        },
+        {
+          "alpha": 2.0,
+          "mean_kl": 0.005396478809416294,
+          "mean_abs_logit_shift": 0.07063208520412445,
+          "shift_in_logit_sd": 0.008133491432463393
+        },
+        {
+          "alpha": 4.0,
+          "mean_kl": 0.020994123071432114,
+          "mean_abs_logit_shift": 0.1412641704082489,
+          "shift_in_logit_sd": 0.016266982864926786
+        },
+        {
+          "alpha": 8.0,
+          "mean_kl": 0.0797252282500267,
+          "mean_abs_logit_shift": 0.2825283408164978,
+          "shift_in_logit_sd": 0.03253396572985357
+        },
+        {
+          "alpha": 16.0,
+          "mean_kl": 0.2894132137298584,
+          "mean_abs_logit_shift": 0.5650566816329956,
+          "shift_in_logit_sd": 0.06506793145970714
+        },
+        {
+          "alpha": 32.0,
+          "mean_kl": 0.9662830829620361,
+          "mean_abs_logit_shift": 1.1301133632659912,
+          "shift_in_logit_sd": 0.13013586291941429
+        },
+        {
+          "alpha": 64.0,
+          "mean_kl": 2.8938355445861816,
+          "mean_abs_logit_shift": 2.2602267265319824,
+          "shift_in_logit_sd": 0.26027172583882857
+        },
+        {
+          "alpha": 128.0,
+          "mean_kl": 7.816226959228516,
+          "mean_abs_logit_shift": 4.520453453063965,
+          "shift_in_logit_sd": 0.5205434516776571
+        },
+        {
+          "alpha": 256.0,
+          "mean_kl": 21.54116439819336,
+          "mean_abs_logit_shift": 9.04090690612793,
+          "shift_in_logit_sd": 1.0410869033553143
+        }
+      ],
+      "budgets": [
+        {
+          "budget": 0.01,
+          "alpha_star": 2.7367340326309204,
+          "achieved_kl": 0.009999998845160007,
+          "mean_abs_logit_shift": 0.0966506078839302,
+          "shift_in_logit_sd": 0.011129600505131648
+        },
+        {
+          "budget": 0.02,
+          "alpha_star": 3.9015289545059204,
+          "achieved_kl": 0.019999999552965164,
+          "mean_abs_logit_shift": 0.13778656721115112,
+          "shift_in_logit_sd": 0.015866526673843664
+        },
+        {
+          "budget": 0.05,
+          "alpha_star": 6.265923261642455,
+          "achieved_kl": 0.049999967217445374,
+          "mean_abs_logit_shift": 0.22128760814666748,
+          "shift_in_logit_sd": 0.02548191604098554
+        },
+        {
+          "budget": 0.1,
+          "alpha_star": 9.016738414764403,
+          "achieved_kl": 0.09999994188547134,
+          "mean_abs_logit_shift": 0.3184354901313782,
+          "shift_in_logit_sd": 0.03666877911491429
+        },
+        {
+          "budget": 0.25,
+          "alpha_star": 14.761826038360596,
+          "achieved_kl": 0.2499999701976776,
+          "mean_abs_logit_shift": 0.5213292241096497,
+          "shift_in_logit_sd": 0.06003258668542072
+        },
+        {
+          "budget": 0.5,
+          "alpha_star": 21.747551918029785,
+          "achieved_kl": 0.5,
+          "mean_abs_logit_shift": 0.7680374383926392,
+          "shift_in_logit_sd": 0.08844175995830415
+        }
+      ]
+    },
+    "reference": {
+      "weight_norm": 91.59349822998047,
+      "curve": [
+        {
+          "alpha": 0.0,
+          "mean_kl": -4.272750153688776e-09,
+          "mean_abs_logit_shift": 0.0,
+          "shift_in_logit_sd": 0.0
+        },
+        {
+          "alpha": 0.5,
+          "mean_kl": 0.00013309309724718332,
+          "mean_abs_logit_shift": 0.019325975328683853,
+          "shift_in_logit_sd": 0.0022254426484165342
+        },
+        {
+          "alpha": 1.0,
+          "mean_kl": 0.0005327643011696637,
+          "mean_abs_logit_shift": 0.038651950657367706,
+          "shift_in_logit_sd": 0.0044508852968330685
+        },
+        {
+          "alpha": 2.0,
+          "mean_kl": 0.0021340942475944757,
+          "mean_abs_logit_shift": 0.07730390131473541,
+          "shift_in_logit_sd": 0.008901770593666137
+        },
+        {
+          "alpha": 4.0,
+          "mean_kl": 0.008570319972932339,
+          "mean_abs_logit_shift": 0.15460780262947083,
+          "shift_in_logit_sd": 0.017803541187332274
+        },
+        {
+          "alpha": 8.0,
+          "mean_kl": 0.03463578596711159,
+          "mean_abs_logit_shift": 0.30921560525894165,
+          "shift_in_logit_sd": 0.03560708237466455
+        },
+        {
+          "alpha": 16.0,
+          "mean_kl": 0.14263367652893066,
+          "mean_abs_logit_shift": 0.6184312105178833,
+          "shift_in_logit_sd": 0.0712141647493291
+        },
+        {
+          "alpha": 32.0,
+          "mean_kl": 0.6312325596809387,
+          "mean_abs_logit_shift": 1.2368624210357666,
+          "shift_in_logit_sd": 0.1424283294986582
+        },
+        {
+          "alpha": 64.0,
+          "mean_kl": 3.438804864883423,
+          "mean_abs_logit_shift": 2.473724842071533,
+          "shift_in_logit_sd": 0.2848566589973164
+        },
+        {
+          "alpha": 128.0,
+          "mean_kl": 15.192298889160156,
+          "mean_abs_logit_shift": 4.947449684143066,
+          "shift_in_logit_sd": 0.5697133179946328
+        },
+        {
+          "alpha": 256.0,
+          "mean_kl": 43.98986053466797,
+          "mean_abs_logit_shift": 9.894899368286133,
+          "shift_in_logit_sd": 1.1394266359892655
+        }
+      ],
+      "budgets": [
+        {
+          "budget": 0.01,
+          "alpha_star": 4.319202661514282,
+          "achieved_kl": 0.00999997928738594,
+          "mean_abs_logit_shift": 0.16694557666778564,
+          "shift_in_logit_sd": 0.019224271994674247
+        },
+        {
+          "budget": 0.02,
+          "alpha_star": 6.095009088516235,
+          "achieved_kl": 0.019999977201223373,
+          "mean_abs_logit_shift": 0.23558397591114044,
+          "shift_in_logit_sd": 0.027128184650947188
+        },
+        {
+          "budget": 0.05,
+          "alpha_star": 9.588798999786377,
+          "achieved_kl": 0.049999989569187164,
+          "mean_abs_logit_shift": 0.37062567472457886,
+          "shift_in_logit_sd": 0.042678631691412956
+        },
+        {
+          "budget": 0.1,
+          "alpha_star": 13.46792459487915,
+          "achieved_kl": 0.09999997913837433,
+          "mean_abs_logit_shift": 0.5205615162849426,
+          "shift_in_logit_sd": 0.05994418288144347
+        },
+        {
+          "budget": 0.25,
+          "alpha_star": 20.924773216247555,
+          "achieved_kl": 0.2499999701976776,
+          "mean_abs_logit_shift": 0.8087831735610962,
+          "shift_in_logit_sd": 0.09313375067250036
+        },
+        {
+          "budget": 0.5,
+          "alpha_star": 28.838433265686035,
+          "achieved_kl": 0.4999998211860657,
+          "mean_abs_logit_shift": 1.1146615743637085,
+          "shift_in_logit_sd": 0.12835654418218959
+        }
+      ]
+    }
+  },
+  "summary": {
+    "logit_std": 8.684103965759277,
+    "weight_norm_ratio_ref_over_cholesky": 10.630972237949427,
+    "alpha_star_ratio_ref_over_cholesky_mean": 1.48465941861293,
+    "paper_alpha_range": [
+      0.5,
+      2.0
+    ],
+    "alpha_star_min_over_budgets": 2.7367340326309204
+  }
+}

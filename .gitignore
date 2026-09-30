@@ -55,3 +55,6 @@ Thumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Research artefacts: keep the small result JSONs, ignore the growing judge cache
+results/*judge_cache.jsonl
