@@ -1,0 +1,457 @@
+{
+  "meta": {
+    "model": "distilgpt2",
+    "hidden": 768,
+    "vocab": 50257,
+    "alpha": 1.0,
+    "identifiability_gate": 0.6
+  },
+  "attributes": [
+    "first_person",
+    "second_person",
+    "interrogative",
+    "hedge_free"
+  ],
+  "gated_in": [
+    "first_person",
+    "second_person",
+    "interrogative",
+    "hedge_free"
+  ],
+  "probes": [
+    {
+      "name": "first_person",
+      "heldout_accuracy": 1.0,
+      "z_vs_chance": 2.1213203435596424,
+      "identifiable": true,
+      "n_fit": 42,
+      "n_heldout_pos": 9,
+      "n_heldout_neg": 9,
+      "intent": "narrative written in the first person"
+    },
+    {
+      "name": "second_person",
+      "heldout_accuracy": 0.8333333432674408,
+      "z_vs_chance": 1.4142136045199436,
+      "identifiable": false,
+      "n_fit": 42,
+      "n_heldout_pos": 9,
+      "n_heldout_neg": 9,
+      "intent": "text addressed directly to the reader"
+    },
+    {
+      "name": "interrogative",
+      "heldout_accuracy": 1.0,
+      "z_vs_chance": 2.1213203435596424,
+      "identifiable": true,
+      "n_fit": 43,
+      "n_heldout_pos": 9,
+      "n_heldout_neg": 9,
+      "intent": "interrogative rather than declarative sentences"
+    },
+    {
+      "name": "hedge_free",
+      "heldout_accuracy": 0.9444444477558136,
+      "z_vs_chance": 1.8856180972130763,
+      "identifiable": true,
+      "n_fit": 43,
+      "n_heldout_pos": 9,
+      "n_heldout_neg": 9,
+      "intent": "direct, unhedged phrasing rather than hedged"
+    }
+  ],
+  "confounds": [
+    {
+      "target": "first_person",
+      "verdict": "clean",
+      "confounds": [
+        {
+          "name": "second_person",
+          "angle_degrees": 85.39802286786681,
+          "cosine": 0.08023332059383392,
+          "confound_heldout_accuracy": 0.8333333432674408,
+          "confound_z_vs_chance": 1.4142136045199436,
+          "confound_is_usable": false,
+          "intent": "custom probe; intent undocumented"
+        }
+      ]
+    },
+    {
+      "target": "first_person",
+      "verdict": "clean",
+      "confounds": [
+        {
+          "name": "interrogative",
+          "angle_degrees": 86.06840097329953,
+          "cosine": 0.06856551021337509,
+          "confound_heldout_accuracy": 1.0,
+          "confound_z_vs_chance": 2.1213203435596424,
+          "confound_is_usable": true,
+          "intent": "custom probe; intent undocumented"
+        }
+      ]
+    },
+    {
+      "target": "first_person",
+      "verdict": "clean",
+      "confounds": [
+        {
+          "name": "hedge_free",
+          "angle_degrees": 92.77472160884159,
+          "cosine": -0.048409100621938705,
+          "confound_heldout_accuracy": 0.9444444477558136,
+          "confound_z_vs_chance": 1.8856180972130763,
+          "confound_is_usable": true,
+          "intent": "custom probe; intent undocumented"
+        }
+      ]
+    },
+    {
+      "target": "second_person",
+      "verdict": "clean",
+      "confounds": [
+        {
+          "name": "interrogative",
+          "angle_degrees": 85.52924233129153,
+          "cosine": 0.07795028388500214,
+          "confound_heldout_accuracy": 1.0,
+          "confound_z_vs_chance": 2.1213203435596424,
+          "confound_is_usable": true,
+          "intent": "custom probe; intent undocumented"
+        }
+      ]
+    },
+    {
+      "target": "second_person",
+      "verdict": "clean",
+      "confounds": [
+        {
+          "name": "hedge_free",
+          "angle_degrees": 94.17056003541221,
+          "cosine": -0.07272574305534363,
+          "confound_heldout_accuracy": 0.9444444477558136,
+          "confound_z_vs_chance": 1.8856180972130763,
+          "confound_is_usable": true,
+          "intent": "custom probe; intent undocumented"
+        }
+      ]
+    },
+    {
+      "target": "interrogative",
+      "verdict": "clean",
+      "confounds": [
+        {
+          "name": "hedge_free",
+          "angle_degrees": 91.92548772726991,
+          "cosine": -0.03359977528452873,
+          "confound_heldout_accuracy": 0.9444444477558136,
+          "confound_z_vs_chance": 1.8856180972130763,
+          "confound_is_usable": true,
+          "intent": "custom probe; intent undocumented"
+        }
+      ]
+    }
+  ],
+  "confound_min_angles": [
+    [
+      "first_person",
+      "second_person",
+      85.39802286786681
+    ],
+    [
+      "first_person",
+      "interrogative",
+      86.06840097329953
+    ],
+    [
+      "first_person",
+      "hedge_free",
+      92.77472160884159
+    ],
+    [
+      "second_person",
+      "interrogative",
+      85.52924233129153
+    ],
+    [
+      "second_person",
+      "hedge_free",
+      94.17056003541221
+    ],
+    [
+      "interrogative",
+      "hedge_free",
+      91.92548772726991
+    ]
+  ],
+  "interference": {
+    "rows": [
+      {
+        "alpha": 0.25,
+        "attribute_a": "first_person",
+        "attribute_b": "second_person",
+        "predicted_overlap": 0.035220321267843246,
+        "retention_a": 2.347513198852539,
+        "retention_b": 0.6744598746299744,
+        "worst_retention": 0.6744598746299744
+      },
+      {
+        "alpha": 0.25,
+        "attribute_a": "second_person",
+        "attribute_b": "hedge_free",
+        "predicted_overlap": 0.033828411251306534,
+        "retention_a": 0.6744598746299744,
+        "retention_b": 2.4113826751708984,
+        "worst_retention": 0.6744598746299744
+      },
+      {
+        "alpha": 0.25,
+        "attribute_a": "first_person",
+        "attribute_b": "interrogative",
+        "predicted_overlap": 0.005571617744863033,
+        "retention_a": 2.347513198852539,
+        "retention_b": 1.9733136892318726,
+        "worst_retention": 1.9733136892318726
+      },
+      {
+        "alpha": 0.25,
+        "attribute_a": "interrogative",
+        "attribute_b": "hedge_free",
+        "predicted_overlap": 0.004031395073980093,
+        "retention_a": 1.9733136892318726,
+        "retention_b": 2.4113826751708984,
+        "worst_retention": 1.9733136892318726
+      },
+      {
+        "alpha": 0.25,
+        "attribute_a": "second_person",
+        "attribute_b": "interrogative",
+        "predicted_overlap": 0.00402496661990881,
+        "retention_a": 0.6744598746299744,
+        "retention_b": 1.9733136892318726,
+        "worst_retention": 0.6744598746299744
+      },
+      {
+        "alpha": 0.25,
+        "attribute_a": "first_person",
+        "attribute_b": "hedge_free",
+        "predicted_overlap": 0.0013552220771089196,
+        "retention_a": 2.347513198852539,
+        "retention_b": 2.4113826751708984,
+        "worst_retention": 2.347513198852539
+      },
+      {
+        "alpha": 0.5,
+        "attribute_a": "first_person",
+        "attribute_b": "second_person",
+        "predicted_overlap": 0.035220321267843246,
+        "retention_a": 2.3475136756896973,
+        "retention_b": 0.6744598746299744,
+        "worst_retention": 0.6744598746299744
+      },
+      {
+        "alpha": 0.5,
+        "attribute_a": "second_person",
+        "attribute_b": "hedge_free",
+        "predicted_overlap": 0.033828411251306534,
+        "retention_a": 0.6744598746299744,
+        "retention_b": 2.4113826751708984,
+        "worst_retention": 0.6744598746299744
+      },
+      {
+        "alpha": 0.5,
+        "attribute_a": "first_person",
+        "attribute_b": "interrogative",
+        "predicted_overlap": 0.005571617744863033,
+        "retention_a": 2.3475136756896973,
+        "retention_b": 1.9733136892318726,
+        "worst_retention": 1.9733136892318726
+      },
+      {
+        "alpha": 0.5,
+        "attribute_a": "interrogative",
+        "attribute_b": "hedge_free",
+        "predicted_overlap": 0.004031395073980093,
+        "retention_a": 1.9733136892318726,
+        "retention_b": 2.4113826751708984,
+        "worst_retention": 1.9733136892318726
+      },
+      {
+        "alpha": 0.5,
+        "attribute_a": "second_person",
+        "attribute_b": "interrogative",
+        "predicted_overlap": 0.00402496661990881,
+        "retention_a": 0.6744598746299744,
+        "retention_b": 1.9733136892318726,
+        "worst_retention": 0.6744598746299744
+      },
+      {
+        "alpha": 0.5,
+        "attribute_a": "first_person",
+        "attribute_b": "hedge_free",
+        "predicted_overlap": 0.0013552220771089196,
+        "retention_a": 2.3475136756896973,
+        "retention_b": 2.4113826751708984,
+        "worst_retention": 2.3475136756896973
+      },
+      {
+        "alpha": 1.0,
+        "attribute_a": "first_person",
+        "attribute_b": "second_person",
+        "predicted_overlap": 0.035220321267843246,
+        "retention_a": 2.3475139141082764,
+        "retention_b": 0.6744598746299744,
+        "worst_retention": 0.6744598746299744
+      },
+      {
+        "alpha": 1.0,
+        "attribute_a": "second_person",
+        "attribute_b": "hedge_free",
+        "predicted_overlap": 0.033828411251306534,
+        "retention_a": 0.6744598746299744,
+        "retention_b": 2.4113826751708984,
+        "worst_retention": 0.6744598746299744
+      },
+      {
+        "alpha": 1.0,
+        "attribute_a": "first_person",
+        "attribute_b": "interrogative",
+        "predicted_overlap": 0.005571617744863033,
+        "retention_a": 2.3475139141082764,
+        "retention_b": 1.9733136892318726,
+        "worst_retention": 1.9733136892318726
+      },
+      {
+        "alpha": 1.0,
+        "attribute_a": "interrogative",
+        "attribute_b": "hedge_free",
+        "predicted_overlap": 0.004031395073980093,
+        "retention_a": 1.9733136892318726,
+        "retention_b": 2.4113826751708984,
+        "worst_retention": 1.9733136892318726
+      },
+      {
+        "alpha": 1.0,
+        "attribute_a": "second_person",
+        "attribute_b": "interrogative",
+        "predicted_overlap": 0.00402496661990881,
+        "retention_a": 0.6744598746299744,
+        "retention_b": 1.9733136892318726,
+        "worst_retention": 0.6744598746299744
+      },
+      {
+        "alpha": 1.0,
+        "attribute_a": "first_person",
+        "attribute_b": "hedge_free",
+        "predicted_overlap": 0.0013552220771089196,
+        "retention_a": 2.3475139141082764,
+        "retention_b": 2.4113826751708984,
+        "worst_retention": 2.3475139141082764
+      },
+      {
+        "alpha": 2.0,
+        "attribute_a": "first_person",
+        "attribute_b": "second_person",
+        "predicted_overlap": 0.035220321267843246,
+        "retention_a": 2.347513198852539,
+        "retention_b": 0.6744598746299744,
+        "worst_retention": 0.6744598746299744
+      },
+      {
+        "alpha": 2.0,
+        "attribute_a": "second_person",
+        "attribute_b": "hedge_free",
+        "predicted_overlap": 0.033828411251306534,
+        "retention_a": 0.6744598746299744,
+        "retention_b": 2.4113826751708984,
+        "worst_retention": 0.6744598746299744
+      },
+      {
+        "alpha": 2.0,
+        "attribute_a": "first_person",
+        "attribute_b": "interrogative",
+        "predicted_overlap": 0.005571617744863033,
+        "retention_a": 2.347513198852539,
+        "retention_b": 1.9733136892318726,
+        "worst_retention": 1.9733136892318726
+      },
+      {
+        "alpha": 2.0,
+        "attribute_a": "interrogative",
+        "attribute_b": "hedge_free",
+        "predicted_overlap": 0.004031395073980093,
+        "retention_a": 1.9733136892318726,
+        "retention_b": 2.4113826751708984,
+        "worst_retention": 1.9733136892318726
+      },
+      {
+        "alpha": 2.0,
+        "attribute_a": "second_person",
+        "attribute_b": "interrogative",
+        "predicted_overlap": 0.00402496661990881,
+        "retention_a": 0.6744598746299744,
+        "retention_b": 1.9733136892318726,
+        "worst_retention": 0.6744598746299744
+      },
+      {
+        "alpha": 2.0,
+        "attribute_a": "first_person",
+        "attribute_b": "hedge_free",
+        "predicted_overlap": 0.0013552220771089196,
+        "retention_a": 2.347513198852539,
+        "retention_b": 2.4113826751708984,
+        "worst_retention": 2.347513198852539
+      }
+    ],
+    "n_pairs": 6,
+    "spearman_rho": 0.6172133998483676,
+    "spearman_p": 0.11666446478102338,
+    "mean_overlap": 0.014005322339168439,
+    "mean_retention_loss": -0.3862534165382385,
+    "alphas": [
+      0.25,
+      0.5,
+      1.0,
+      2.0
+    ]
+  },
+  "graded_vs_binary": {
+    "n": 79,
+    "n_distinct_grades": 4,
+    "graded": {
+      "name": "toxicity_graded",
+      "n_classes": 2,
+      "effective_rank": 1,
+      "n_fit": 55,
+      "heldout_grade_accuracy": 0.7916666865348816,
+      "heldout_side_accuracy": 1.0,
+      "shrinkage": 0.001,
+      "passes_gate": true,
+      "between_class_spectrum": [
+        1241.39209,
+        0.000323
+      ],
+      "merged_grades": [
+        2.0,
+        3.0
+      ]
+    },
+    "binary": {
+      "name": "toxicity_binary",
+      "n_classes": 2,
+      "effective_rank": 1,
+      "n_fit": 55,
+      "heldout_grade_accuracy": 0.9166666865348816,
+      "heldout_side_accuracy": 0.9166666865348816,
+      "shrinkage": 0.001,
+      "passes_gate": true,
+      "between_class_spectrum": [
+        4598.875,
+        0.000396
+      ],
+      "merged_grades": []
+    },
+    "grade_accuracy_gain": -0.125,
+    "rank_gain": 0
+  }
+}
