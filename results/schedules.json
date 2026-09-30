@@ -1,0 +1,263 @@
+{
+  "meta": {
+    "model": "distilgpt2",
+    "seed": 20260930,
+    "n_tokens": 24,
+    "n_prompts": 16,
+    "logit_scale": 10.155878067016602,
+    "top_k": 50,
+    "wall_clock_s": 486.9
+  },
+  "conditions": [
+    {
+      "condition": "baseline (alpha=0)",
+      "peak_alpha": 0.0,
+      "top_k": 50,
+      "distinct_2": 0.925531914893617,
+      "repetition_3": 0.0,
+      "mean_words": 18.625,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 1.0,
+      "mean_decode_ms": 1935.9849112499887,
+      "mean_abs_logit_shift": 0.0,
+      "logit_shift_in_logit_sd": 0.0
+    },
+    {
+      "condition": "schedule:fixed",
+      "peak_alpha": 8.0,
+      "top_k": 50,
+      "distinct_2": 0.8825503355704698,
+      "repetition_3": 0.0029761904761904795,
+      "mean_words": 19.625,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 1.0,
+      "mean_decode_ms": 1892.939765874985,
+      "mean_abs_logit_shift": 0.2825283408164978,
+      "logit_shift_in_logit_sd": 0.02781919386508483
+    },
+    {
+      "condition": "schedule:linear",
+      "peak_alpha": 8.0,
+      "top_k": 50,
+      "distinct_2": 0.9252669039145908,
+      "repetition_3": 0.0,
+      "mean_words": 18.5625,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 1.0,
+      "mean_decode_ms": 1889.1153833125713,
+      "mean_abs_logit_shift": 0.2825283408164978,
+      "logit_shift_in_logit_sd": 0.02781919386508483
+    },
+    {
+      "condition": "schedule:cosine",
+      "peak_alpha": 8.0,
+      "top_k": 50,
+      "distinct_2": 0.9137931034482759,
+      "repetition_3": 0.0034722222222222238,
+      "mean_words": 19.125,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 1.0,
+      "mean_decode_ms": 1901.0228711875216,
+      "mean_abs_logit_shift": 0.2825283408164978,
+      "logit_shift_in_logit_sd": 0.02781919386508483
+    },
+    {
+      "condition": "schedule:margin_gated",
+      "peak_alpha": 5.714285714285714,
+      "top_k": 50,
+      "distinct_2": 0.8807947019867549,
+      "repetition_3": 0.0029761904761904795,
+      "mean_words": 19.875,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 1.0,
+      "mean_decode_ms": 1881.3992464374678,
+      "mean_abs_logit_shift": 0.2018059641122818,
+      "logit_shift_in_logit_sd": 0.019870853389594156
+    },
+    {
+      "condition": "sweep:alpha=0",
+      "peak_alpha": 0.0,
+      "top_k": 50,
+      "distinct_2": 0.925531914893617,
+      "repetition_3": 0.0,
+      "mean_words": 18.625,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 1.0,
+      "mean_decode_ms": 1905.979116374951,
+      "mean_abs_logit_shift": 0.0,
+      "logit_shift_in_logit_sd": 0.0
+    },
+    {
+      "condition": "sweep:alpha=8",
+      "peak_alpha": 8.0,
+      "top_k": 50,
+      "distinct_2": 0.8825503355704698,
+      "repetition_3": 0.0029761904761904795,
+      "mean_words": 19.625,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 1.0,
+      "mean_decode_ms": 1955.1406912499942,
+      "mean_abs_logit_shift": 0.2825283408164978,
+      "logit_shift_in_logit_sd": 0.02781919386508483
+    },
+    {
+      "condition": "sweep:alpha=32",
+      "peak_alpha": 32.0,
+      "top_k": 50,
+      "distinct_2": 0.8759124087591241,
+      "repetition_3": 0.016021825396825402,
+      "mean_words": 18.125,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 1.0,
+      "mean_decode_ms": 1894.4595824375056,
+      "mean_abs_logit_shift": 1.1301133632659912,
+      "logit_shift_in_logit_sd": 0.11127677546033932
+    },
+    {
+      "condition": "sweep:alpha=128",
+      "peak_alpha": 128.0,
+      "top_k": 50,
+      "distinct_2": 0.6666666666666666,
+      "repetition_3": 0.0,
+      "mean_words": 4.75,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 0.8125,
+      "mean_decode_ms": 1868.3997046250197,
+      "mean_abs_logit_shift": 4.520453453063965,
+      "logit_shift_in_logit_sd": 0.44510710184135727
+    },
+    {
+      "condition": "sweep:alpha=512",
+      "peak_alpha": 512.0,
+      "top_k": 50,
+      "distinct_2": 0.0,
+      "repetition_3": 0.0,
+      "mean_words": 1.0,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 0.0625,
+      "mean_decode_ms": 1887.3124848750535,
+      "mean_abs_logit_shift": 18.08181381225586,
+      "logit_shift_in_logit_sd": 1.780428407365429
+    },
+    {
+      "condition": "sweep:alpha=2048",
+      "peak_alpha": 2048.0,
+      "top_k": 50,
+      "distinct_2": 0.0,
+      "repetition_3": 0.0,
+      "mean_words": 1.0,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 0.0625,
+      "mean_decode_ms": 1887.1161061249923,
+      "mean_abs_logit_shift": 72.32725524902344,
+      "logit_shift_in_logit_sd": 7.121713629461716
+    },
+    {
+      "condition": "sweep:alpha=8192",
+      "peak_alpha": 8192.0,
+      "top_k": 50,
+      "distinct_2": 0.0,
+      "repetition_3": 0.0,
+      "mean_words": 1.0,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 0.0625,
+      "mean_decode_ms": 1918.6313137499696,
+      "mean_abs_logit_shift": 289.30902099609375,
+      "logit_shift_in_logit_sd": 28.486854517846865
+    },
+    {
+      "condition": "sweep:alpha=32768",
+      "peak_alpha": 32768.0,
+      "top_k": 50,
+      "distinct_2": 0.0,
+      "repetition_3": 0.0,
+      "mean_words": 1.0,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 0.0625,
+      "mean_decode_ms": 1899.8438563749858,
+      "mean_abs_logit_shift": 1157.236083984375,
+      "logit_shift_in_logit_sd": 113.94741807138746
+    },
+    {
+      "condition": "greedy:alpha=0",
+      "peak_alpha": 0.0,
+      "top_k": 1,
+      "distinct_2": 0.7537688442211056,
+      "repetition_3": 0.10986209514170042,
+      "mean_words": 13.4375,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 1.0,
+      "mean_decode_ms": 1901.2393789375183,
+      "mean_abs_logit_shift": 0.0,
+      "logit_shift_in_logit_sd": 0.0
+    },
+    {
+      "condition": "greedy:alpha=512",
+      "peak_alpha": 512.0,
+      "top_k": 1,
+      "distinct_2": 0.0,
+      "repetition_3": 0.0,
+      "mean_words": 1.0,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 0.0625,
+      "mean_decode_ms": 1888.111540937487,
+      "mean_abs_logit_shift": 18.08181381225586,
+      "logit_shift_in_logit_sd": 1.780428407365429
+    },
+    {
+      "condition": "greedy:alpha=32768",
+      "peak_alpha": 32768.0,
+      "top_k": 1,
+      "distinct_2": 0.0,
+      "repetition_3": 0.0,
+      "mean_words": 1.0,
+      "empty_fraction": 0.0,
+      "unique_text_fraction": 0.0625,
+      "mean_decode_ms": 1905.5701453749948,
+      "mean_abs_logit_shift": 1157.236083984375,
+      "logit_shift_in_logit_sd": 113.94741807138746
+    }
+  ],
+  "u2_selection": {
+    "adopted": true,
+    "best_kind": "margin_gated",
+    "best_relative_gain": 0.2857142857142857,
+    "perplexity_delta": 0.054878575749719216,
+    "rule": "U2: a schedule is adopted only if it reduces toxicity by >= 5% relative at matched perplexity (dPPL <= +1); ties go to fixed alpha.",
+    "table": [
+      {
+        "kind": "fixed",
+        "primary": 8.0,
+        "relative_gain": 0.0,
+        "perplexity": 1.0804597701149425,
+        "perplexity_delta": 0.0,
+        "qualifies": false
+      },
+      {
+        "kind": "linear",
+        "primary": 8.0,
+        "relative_gain": 0.0,
+        "perplexity": 1.0807692307692307,
+        "perplexity_delta": 0.00030946065428816283,
+        "qualifies": false
+      },
+      {
+        "kind": "cosine",
+        "primary": 8.0,
+        "relative_gain": 0.0,
+        "perplexity": 1.0943396226415094,
+        "perplexity_delta": 0.013879852526566872,
+        "qualifies": false
+      },
+      {
+        "kind": "margin_gated",
+        "primary": 5.714285714285714,
+        "relative_gain": 0.2857142857142857,
+        "perplexity": 1.1353383458646618,
+        "perplexity_delta": 0.054878575749719216,
+        "qualifies": true
+      }
+    ]
+  },
+  "caveat": "toxicity is proxied by steering strength because the toxicity subspace available in this environment is below chance at every layer (Appendix E); the U2 rule is exercised and its verdict recorded, but no toxicity claim is made from it"
+}
