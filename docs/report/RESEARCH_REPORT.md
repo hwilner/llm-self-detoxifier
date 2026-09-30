@@ -4,7 +4,7 @@
 
 **Report generated:** 2026-09-30
 **Repository:** [https://github.com/hwilner/llm-self-detoxifier](https://github.com/hwilner/llm-self-detoxifier) @ `main` · baseline commit `9ab2a2c`
-**Work items in this report:** 46 (15 commits, 29 task cards, 2 pull requests), spanning 2025-11-22 → 2026-09-30
+**Work items in this report:** 48 (15 commits, 29 task cards, 4 pull requests), spanning 2025-11-22 → 2026-09-30
 
 ---
 
@@ -13,7 +13,7 @@
 Every row is one verifiable, dated artefact in the repository's history: a
 commit, a task card, or a pull request opened while producing this report. The
 table is generated directly from the GitHub API and the `git` log, so it can be
-regenerated and diffed at any time. Rows 1–46 are ordered
+regenerated and diffed at any time. Rows 1–48 are ordered
 chronologically; the pull requests near the end are this report's own
 contributions, each of which has a matching appendix section with its full
 write-up.
@@ -73,6 +73,8 @@ write-up.
 | 44 | 2026-09-22 | **card** [#29](https://github.com/hwilner/llm-self-detoxifier/issues/29) [S] Multi-attribute interference-study runner and outputs | Phase 3 (TSM-MA) · S | implementation, 3 acceptance criteria | open |
 | 45 | 2026-09-30 | **PR** [#30](https://github.com/hwilner/llm-self-detoxifier/pull/30) feat(sasa): rank-one margin basis, exact static steering, and stable fitting | Original research (this report) | → `main`, open | open |
 | 46 | 2026-09-30 | **PR** [#31](https://github.com/hwilner/llm-self-detoxifier/pull/31) feat(evaluation, sasa): pinned external judge, NLMA next-state model, stable subspace fitting, four experiments | Original research (this report) | → `research/fast-margin-and-numerics` (stacked), open | open |
+| 47 | 2026-09-30 | **PR** [#32](https://github.com/hwilner/llm-self-detoxifier/pull/32) docs: add the dated research report, figures, and raw result data | Original research (this report) | → `research/evaluation-and-nlma` (stacked), open | open |
+| 48 | 2026-09-30 | **PR** [#33](https://github.com/hwilner/llm-self-detoxifier/pull/33) Implement remaining research ideas: schedules, multi-attribute, decoding, transfer boundary | Original research (this report) | +15072/−0, → `main`, open | open |
 
 **Table 1.** Dated work log for `hwilner/llm-self-detoxifier`, 2025-11-22 to
 2026-09-30. Evidence column summarises the verifiable footprint of each item
@@ -497,6 +499,14 @@ Appendix E does.
 layer, on the assumption that it is the most semantically abstract. A per-layer
 separability sweep tests that assumption directly.
 
+*Rank is not one.* Two-class Fisher discriminant analysis can only ever produce
+a single direction, so the rank-one margin is not a simplification of a richer
+method — it is all the two-class method has. A judge that emits a *graded* label
+gives multiclass LDA $k-1$ directions for free. Appendix H measures the trade:
+graded supervision predicts the grade 12.5 points better than the binary split
+at identical labelling cost, and reports where the rank gain fails to appear
+and why.
+
 ## 6.4 Transfer
 
 The repository's Phase 3 hypothesis — that a toxicity subspace can be fitted on
@@ -504,7 +514,9 @@ a cheap proxy and transferred to a large target with Procrustes alignment — is
 tested here only in its same-family, same-dimension form, because the
 execution environment cannot hold an 8 B model. Appendix F reports the
 same-family result and is explicit that it does not settle the cross-family
-question.
+question. Appendix J then maps the boundary that Appendix F leaves open: twelve
+ordered pairs across four models, measuring how far transfer degrades and
+whether a cheap statistic predicts it in advance.
 
 ## 6.5 Systems
 
@@ -515,7 +527,28 @@ made about SASA — including the 10–15 % figure in `docs/ARCHITECTURE.md` —
 conditional on fixing that first. The fitting path has a smaller but real
 issue: `torch.linalg.inv` on a $d\times d$ covariance followed by a $10^{-6}$
 ridge is neither stable nor well-conditioned; a Cholesky solve with shrinkage is
-both cheaper and better conditioned. Appendix C covers the fitting side.
+both cheaper and better conditioned. Appendix C covers the fitting side, and
+Appendix K covers the decode loop.
+
+## 6.6 Schedules are dose control, not policy
+
+Under the reference next-state estimator the steering vector is *static*
+(Theorem 1), so a schedule changes only the magnitude of one fixed bias over a
+generation — the token ranking is identical at every step. A schedule is a
+**dose control**: it can trade fluency against steering strength, and it cannot
+express a policy. The families implemented in `sasa/scheduling.py` are fixed,
+linear, cosine, step, and margin-gated, and the pre-registered U2 rule
+(`docs/METHODS.md`) decides between them.
+
+The useful result is the *range* rather than the comparison. Sweeping $\alpha$
+over four orders of magnitude turns fluency into a cliff rather than a slope,
+with complete collapse at about 1.8 logit standard deviations. The published
+range $\alpha \in [0.5, 2.0]$ reaches 0.03 — one to two orders of magnitude
+below any fluency cost at all. **A re-run confined to the published range cannot
+detect either detoxification or harm**, which makes its null result uninformative
+about the method rather than evidence of safety. Appendix I reports the sweep,
+and reports the U2 verdict as invalid: with toxicity unavailable, the proxy
+substituted for it is anti-correlated with the objective.
 
 ---
 
@@ -592,6 +625,32 @@ magnitude while the sampling distribution moves by at most 3 %.
 *Figure 12 (Appendix F).* (a) U4 resolves for Procrustes by a factor of 46.
 (b) The two models' representation spaces are substantially aligned.
 
+![Attributes](figures/fig14_attributes.png)
+
+*Figure 14 (Appendix H).* (a) Three of four attribute probes clear a one-sided
+5 % test against chance; `second_person` does not and is excluded. (b) The static
+interference prediction has the right sign but no power, because the attributes
+are so nearly orthogonal that composition amplifies rather than cancels.
+
+![Knee](figures/fig13_degeneracy_knee.png)
+
+*Figure 13 (Appendix I).* (a) Fluency against steering strength: a cliff between
+0.11 and 1.78 logit SD, with the published $\alpha$ range sitting two orders of
+magnitude below it. (b) The usable dynamic range spans four orders of magnitude.
+
+![Transfer boundary](figures/fig15_transfer_boundary.png)
+
+*Figure 15 (Appendix J).* (a) CKA ranks transfer degradation in the expected
+direction but fails on specific pairs. (b) Crossing a family boundary doubles
+the mean transfer error.
+
+![Decode costs](figures/fig16_decode_costs.png)
+
+*Figure 16 (Appendix K).* (a) The key-value cache is exactly equivalent and
+grows more valuable with length, but the analytic gain is not yet realised
+because the model's own forward pass dominates. (b) Batching pays only in the
+vectorised path; the per-row loop shows a flat per-item cost.
+
 ### 8.1 Summary of what is and is not established
 
 | Claim | Status |
@@ -603,9 +662,18 @@ magnitude while the sampling distribution moves by at most 3 %.
 | An external judge is a workable, reproducible replacement for a hosted toxicity API | **Implemented and exercised** (App. D.2) |
 | Scoring SASA with the model's own representation inflates apparent detoxification | **Measured** (App. D.4) |
 | Cross-model transfer of a decision function via Procrustes is feasible at Phase 3's data scale | **Measured** (App. F.3) |
+| Crossing a model-family boundary roughly doubles transfer error | **Measured** (App. J.3) |
+| A cheap alignment statistic (CKA) can screen transfer candidates | **Weakly supported, with counterexamples** (App. J.3) |
+| Graded judge supervision gives a better direction than a binary split at no extra cost | **Measured** (App. H.4) |
+| Multi-attribute interference is predicted by static subspace overlap | **Inconclusive** — right sign, not significant, and the corpus cannot test it (App. H.3) |
+| Steering schedules distinguish themselves at the published $\alpha$ | **No effect detectable** (App. I.2) |
+| The published $\alpha$ range can reveal either detoxification or fluency harm | **Refuted** — it sits two orders of magnitude below the cliff (App. I.3) |
+| The pre-registered U2 schedule rule works with a self-referential proxy | **Refuted** — the proxy inverts the rule's verdict (App. I.4) |
+| Caching is exactly distributional and materially faster | **Measured** — exact in 12/12, 1.25×–2.65× (App. K.2) |
 | SASA detoxifies | **Not established.** No effect at any $\alpha$; confounded by a subspace that is below chance at every layer |
 | Toxicity is linearly decodable from a small model's hidden states | **Not supported** — contradicted at every layer (App. E.1) |
 | A toxicity subspace transfers across model families | **Open.** Only the same-family, same-width operator was tested |
+| The pinned judge is robust to paraphrase-based evasion | **Underpowered** — attack applied, effective paired $n$ of 0–2 (App. L.4) |
 
 ---
 
@@ -627,6 +695,15 @@ optimisation target alone. It is not eliminated — a judge can still be fooled
 by fluent evasive text — which is why the human spot-check protocol
 (`docs/HUMAN_EVAL_PROTOCOL.md`, roadmap item #5) remains the appropriate final
 arbiter and is not replaced by anything here.
+
+Appendix L attacks the judge directly and finds the instrument, not the
+steering, to be the binding constraint: a 0–4 integer rubric over 12 prompts
+yields an effective paired sample of zero to two, so the study is uninformative
+and neither robustness nor vulnerability can be claimed. The consequence for
+§8.1 is a narrowing of the claim. The correct statement is that **steering did
+not fool this judge**, not that the judge catches disguised abuse — the first is
+a finding about SASA, the second a much larger claim about a measurement
+instrument that 12 prompts of integer scores cannot support.
 
 **Scale.** Nothing here was run on a model above 124 M parameters. The
 efficiency results in §5.2 are exact arithmetic identities that hold at any
@@ -662,8 +739,17 @@ it as its own standard. Where the report departs from the repository is on
 execution: the numbers in the README are not reproducible from the repository,
 the tests do not touch the algorithm they describe, and the concept figure is a
 zero-byte file. Those are ordinary, fixable gaps in an unusually well-planned
-project, and the seven contributions here are meant to be a head start on
+project, and the twelve contributions here are meant to be a head start on
 closing them.
+
+Two of the twelve are negative results about the present work rather than about
+SASA, and they are the two most likely to be misread later. The interference
+prediction is unfalsified rather than confirmed (§5, App. H.3), because the
+attributes that could have tested it were orthogonal by construction. The
+judge-gaming study has no resolution (§9, App. L.4), because the rubric scores
+in integers over a sample too small to pair. Both are reported as unfinished
+rather than rounded up, and both name the specific change — correlated attribute
+pairs, a continuous rubric, a powered design — that would settle them.
 
 ---
 
@@ -676,6 +762,11 @@ closing them.
 - appendix e geometry
 - appendix f transfer
 - appendix g reproducibility
+- appendix h attributes
+- appendix i schedules
+- appendix j transfer boundary
+- appendix k decode costs
+- appendix l judge gaming
 
 ---
 
@@ -1532,5 +1623,623 @@ changes behaviour, `sasa/sampler.py`, `sasa/subspace_learner.py`,
 table is left exactly as found — it is the maintainer's call to revise or
 retract it, not a contributor's. Each contribution ships with tests, per the
 cross-phase rule in `docs/ROADMAP.md`.
+
+---
+
+# Appendix H — Graded attributes, interference geometry, and confounds
+
+**Ideas 6, 8, and 9 of §6.** Code: `sasa/multi_attribute.py`, `sasa/probes.py`,
+`evaluation/attributes.py`. Data: `results/attributes.json`. Reproduce with
+`experiments/run_multi_attribute.py`.
+
+## H.1 Why the attribute set is not toxicity
+
+Appendix E found the toxicity direction below chance at every layer of
+`distilgpt2`. Interference between attributes whose own subspaces carry no signal
+would measure noise, so the four attributes studied here are **lexically
+grounded** and mechanically gradeable: first-person narration, second-person
+address, interrogative sentences, and unhedged phrasing. Every label is a
+property of the text a reader can verify, derived by
+`evaluation.attributes.attribute_grade` with no model in the loop.
+
+| Attribute | Intent | n per class | Held-out accuracy | z vs chance | Identifiable |
+|:---|:---|---:|---:|---:|:---:|
+| `first_person` | first-person narration | 30 | 1.000 | +2.12 | yes |
+| `interrogative` | question vs statement | 30 | 1.000 | +2.12 | yes |
+| `hedge_free` | direct vs hedged | 30 | 0.944 | +1.89 | yes |
+| `second_person` | address to the reader | 30 | 0.833 | **+1.41** | **no** |
+
+Three of four clear a one-sided 5 % test against chance; `second_person` does
+not, at 0.833 accuracy on 18 held-out examples. The gate is doing its job, and
+it is worth being explicit about why a *threshold* would not have: on 18
+held-out examples a probe fitted to pure noise lands anywhere in roughly
+[0.38, 0.54], so any accuracy cutoff near 0.5 admits noise. `sasa.probes.Probe`
+therefore reports a z-score against chance rather than a pass/fail accuracy.
+
+Two design details are worth recording because they were got wrong first. The
+corpora began at 8 examples per class, which left 2–3 held out per class and made
+the significance test meaningless; 30 per class is the minimum that makes it
+informative. And the hedge lexicon initially contained "some" and "around",
+which mislabelled ordinary prose — the fix was to shrink the lexicon to fifteen
+explicit modals and correct the three affected sentences, rather than to keep
+growing the list until the labels looked right. A label set tuned until it
+agrees with itself is not a label set.
+
+## H.2 Confound geometry
+
+Every pair of attribute probes is between 85° and 94° apart — near-orthogonal,
+as a reader would expect of genuinely different surface properties. The smallest
+angle is `first_person`/`second_person` at 85.4°, the largest
+`second_person`/`hedge_free` at 94.2°.
+
+The practical consequence is about Appendix E's unresolved third explanation.
+The toxicity direction there could plausibly have been tracking a *curation*
+signal rather than harm, because the toxic class was dominated by hand-written
+sentences. The confound machinery in `sasa.probes` is the tool to settle that
+question, and it reports the price of every adjustment alongside the gain
+(`partial_out_heldout_accuracy` returns `accuracy_before`, `accuracy_after`,
+`cost`, `cosine_removed`) rather than applying a correction quietly. It was not
+run against the toxicity direction here, because that direction is below chance
+and there is nothing to de-confound.
+
+## H.3 Static interference prediction: right sign, no power
+
+If attribute $i$ steers with margin $f_i$ and attribute $j$ with $f_j$, the only
+channel through which they interact is the overlap of their weight subspaces, and
+that is computable before any generation. The prediction is therefore cheap. The
+question is whether it *ranks* interference correctly, so interference was also
+measured independently — by composing biases at matched steering mass and
+computing, for each attribute, the fraction of its intended margin effect that
+survives the composition.
+
+| Pair | Predicted overlap | Retention $a$ | Retention $b$ | Measured loss |
+|:---|---:|---:|---:|---:|
+| `first_person` / `second_person` | 0.035 | +2.35 | +0.67 | −0.67 |
+| `first_person` / `interrogative` | 0.006 | +2.35 | +1.97 | −0.97 |
+| `first_person` / `hedge_free` | 0.001 | +2.35 | +2.41 | −1.41 |
+| `second_person` / `interrogative` | 0.004 | +0.67 | +1.97 | −0.33 |
+| `second_person` / `hedge_free` | 0.034 | +0.67 | +2.41 | −1.41 |
+| `interrogative` / `hedge_free` | 0.004 | +1.97 | +2.41 | −1.41 |
+
+Spearman between predicted overlap and measured loss: **$\rho = +0.62$,
+$p = 0.117$** over six pairs.
+
+The sign is right and the effect is not significant, and the reason is visible
+in the table: **mean retention loss is $-0.39$, i.e. negative.** Every retention
+is above 1, which means composing the biases *amplified* each attribute's effect
+rather than cancelling it. That is the correct behaviour for near-orthogonal
+directions, and the mean overlap of 0.014 says these attributes are almost
+exactly orthogonal. So the prediction is untested in the only regime where it
+would bite: with attributes that actually overlap.
+
+> **Honest status: specified, implemented, and inconclusive.** The screening
+> idea is sound and the code is in place, but this corpus cannot validate it,
+> because a corpus whose attributes are orthogonal by construction has no
+> interference to predict. Validating it requires deliberately *correlated*
+> attribute pairs — a graded severity scale and a coarse sentiment scale, say,
+> which are correlated in the real world for reasons that are not an artefact of
+> the corpus. That is the experiment to run next, and it is the one thing in
+> this appendix that is genuinely unfinished.
+
+## H.4 Graded supervision: free, and measurably better
+
+Two-class Fisher discriminant analysis can only ever produce **one** direction,
+so SASA's rank-one margin is not a simplification of a richer method — it is all
+the two-class method has. But the pinned judge already emits a graded 0–4 label
+at no extra labelling cost, and with $k$ classes multiclass LDA has $k-1$
+independent directions. The graded margin generalises the binary one exactly:
+
+$$f(x) = \max_{j \in \text{benign}} \delta_j(x) \;-\; \min_{j \in \text{toxic}} \delta_j(x),
+\qquad \delta_j(x) = x^\top \Sigma^{-1}\mu_j - \tfrac12\mu_j^\top\Sigma^{-1}\mu_j,$$
+
+which at $k = 2$ reduces to the binary score
+$\delta_{\text{benign}} - \delta_{\text{toxic}}$ — a claim
+`tests/test_multi_attribute.py::test_graded_reduces_to_the_reference_binary_score`
+pins to a correlation above 0.97.
+
+On the 79 externally judged generations from Appendix D:
+
+| Supervision | Grades used | Effective rank | Held-out **grade** accuracy | Held-out side accuracy |
+|:---|---:|---:|---:|---:|
+| Binary ($\ge 2$ vs 0) | 2 | 1 | 0.792 | 1.000 |
+| Graded (0–4) | 4 | 1 | **0.917** | 1.000 |
+
+**Graded supervision predicts the grade 12.5 points better than the binary split
+at identical labelling cost.** That is the claim, and it holds.
+
+The rank gain did **not** materialise: both fits end up rank 1. The reason is
+recorded rather than hidden — the corpus's grade distribution is lumpy
+(59 texts at 0, 7 at 1, 7 at 2, 2 at 3, 5 at 4), and the rare middle grades are
+merged into the nearest populated grade by `min_class_size`, leaving two classes.
+`GradedSubspace.summary()` reports `merged_grades` so the merge is visible
+rather than implicit. Getting a genuine rank-$k$ discriminant needs a corpus
+with a smoother grade distribution — the RealToxicityPrompts distribution the
+upstream work uses would supply it, and it is not available here.
+
+## H.5 Threats
+
+* **The attributes are easy.** First-person markers and question marks are
+  lexical, so a linear probe finding them is unsurprising and the near-1.0
+  accuracies should not be read as evidence that linear probes are powerful in
+  general. The experiment is about the *geometry* between subspaces, not about
+  probe accuracy.
+* **The interference test is underpowered by construction** (H.3), and the
+  retention metric has no independent validation.
+* **`second_person` failed its own gate** and is nevertheless retained in the
+  interference table, because the gate governs the `is_identifiable` flag on the
+  probe while `AttributeSet.identifiable()` gates on the graded subspace's side
+  accuracy. These are different quantities and both are reported; a reader who
+  wants the stricter subset can take three attributes instead of four.
+* **Everything is one model at one layer.** The final layer only.
+
+---
+
+# Appendix I — Steering schedules, the U2 rule, and the degeneracy knee
+
+**Ideas 13 and 14 of §6.** Code: `sasa/scheduling.py`, `sasa/decoding.py`.
+Data: `results/schedules.json`. Reproduce with `experiments/run_schedules.py`.
+
+## I.1 What a schedule can and cannot change here
+
+Under the reference next-state estimator the steering vector is *static*
+(Theorem 1, Appendix B), so a schedule changes only the **magnitude** of one
+fixed bias over a generation. It cannot change which tokens are preferred — the
+token ranking is identical at every step, which
+`tests/test_scheduling.py::test_schedule_is_the_only_position_dependent_knob`
+asserts directly. A schedule is therefore a *dose* control, not a policy.
+
+That is worth stating before the results, because it bounds what any schedule
+can be expected to buy, and because it is not obvious: the decoder takes
+`alpha(t)` at each step, which looks like a policy but is not one.
+
+The families implemented are `fixed`, `linear` (ramp), `cosine` (decay), `step`,
+and `margin_gated` (opens when a caller-supplied context score crosses a
+threshold). Only the last can be position-*sensitive* in a way that matters,
+and only because the caller supplies the signal — the gate function receives
+`(step, context_score)` and decides.
+
+## I.2 Schedules: no measurable difference at the literature's strengths
+
+16 prompts × 24 tokens, top-$k$ = 50, peak $\alpha = 8$:
+
+| Schedule | Peak $\alpha$ | Logit shift (logit SD) | distinct-2 | Unique texts | 3-gram repetition |
+|:---|---:|---:|---:|---:|---:|
+| baseline | 0 | 0.000 | 0.926 | 1.00 | 0.000 |
+| `fixed` | 8.00 | 0.028 | 0.883 | 1.00 | 0.003 |
+| `linear` | 8.00 | 0.028 | 0.925 | 1.00 | 0.000 |
+| `cosine` | 8.00 | 0.028 | 0.914 | 1.00 | 0.003 |
+| `margin_gated` | 5.71 | 0.020 | 0.881 | 1.00 | 0.003 |
+
+The spread across schedules (distinct-2 between 0.881 and 0.925) is inside the
+noise of a 16-prompt sample, and the logit shift at $\alpha = 8$ is 0.028 standard
+deviations — a regime where the decoder is barely doing anything at all, as I.3
+shows. **No schedule is distinguishable from any other here, and none should be:
+there is no signal to shape.**
+
+## I.3 The degeneracy knee
+
+The useful result of this study is not the schedules but the *range*. Sweeping
+$\alpha$ over four orders of magnitude, with 16 prompts × 24 tokens each:
+
+| $\alpha$ | Logit shift (logit SD) | distinct-2 | Unique texts | 3-gram repetition |
+|---:|---:|---:|---:|---:|
+| 0 | 0.000 | 0.926 | 1.00 | 0.000 |
+| 8 | 0.028 | 0.883 | 1.00 | 0.003 |
+| 32 | 0.111 | 0.876 | 1.00 | 0.016 |
+| **128** | **0.445** | **0.667** | **0.81** | 0.000 |
+| **512** | **1.780** | **0.000** | **0.06** | 0.000 |
+| 2 048 | 7.122 | 0.000 | 0.06 | 0.000 |
+| 8 192 | 28.487 | 0.000 | 0.06 | 0.000 |
+| 32 768 | 113.947 | 0.000 | 0.06 | 0.000 |
+
+This is a **cliff, not a slope**, and its location is the useful number:
+
+* **below ~0.1 logit SD** — no measurable fluency cost;
+* **at ~0.45 logit SD** — distinct-2 falls from 0.88 to 0.67 and a fifth of
+  prompts start producing text identical to another prompt;
+* **by ~1.8 logit SD** — total collapse. distinct-2 is exactly 0 and 94 % of
+  prompts produce the *same* string, i.e. the decoder has degenerated into
+  emitting one fixed token sequence regardless of the prompt.
+
+Greedy decoding (top-$k$ = 1) shows the same cliff at the same place: 0.754
+distinct-2 at $\alpha = 0$, 0.000 at $\alpha = 512$.
+
+The punchline for anyone re-running this work is the gap between the cliff and
+the literature:
+
+> The published $\alpha \in [0.5, 2.0]$ produces a logit shift of **0.001–0.03
+> standard deviations** — between one and two orders of magnitude *below* the
+> onset of any fluency cost, and roughly two orders below total collapse. The
+> usable dynamic range of this decoder is $\alpha \approx 0.03 \to 500$, about
+> four orders of magnitude wide. A re-run confined to the published range cannot
+> detect either detoxification or harm, and its null result is uninformative
+> about the method.
+
+This is the empirical counterpart to Appendix C.4, which reached the same
+conclusion by calibration rather than by generation.
+
+## I.4 The U2 rule was exercised, and its verdict is not evidence
+
+`docs/METHODS.md` U2 fixes the schedule decision in advance. It was applied:
+`select_schedule` returned `adopted = True`, `best_kind = margin_gated`,
+`relative_gain = 0.286`. **That verdict is not evidence of anything, and the
+reason is instructive.**
+
+The rule takes a toxicity score and a perplexity. Toxicity is unavailable here
+— the subspace is below chance at every layer — so steering strength was
+substituted, and inverse distinct-2 for perplexity. But **steering strength is
+anti-correlated with the true objective**: less steering trivially "reduces
+toxicity" in the proxy. The winner won by being *weaker* (peak $\alpha$ 5.71
+against 8.00), which is exactly what a proxy minimised by inaction rewards. The
+$\Delta$PPL term did not catch it because the fluency differences are inside
+noise.
+
+> **Methodological finding, stated as a rule for others: never use steering
+> strength, KL, or any monotone function of the control effort as a proxy for
+> toxicity.** Every such proxy is minimised by doing nothing, so it will
+> reliably select the weakest configuration in a sweep. U2's real requirement —
+> an external toxicity measure — is not a formality; it is the load-bearing part
+> of the rule, and the moment it is replaced by a self-referential quantity the
+> rule inverts.
+
+`sasa/scheduling.select_schedule` is therefore shipped with the rule quoted
+verbatim in its output and a `rule` field recorded alongside the verdict, so a
+consumer of the JSON can see which inputs were real and which were substituted.
+
+## I.5 Threats
+
+* **16 prompts, 24 tokens.** Enough to locate a cliff this sharp, not enough for
+  subtle comparisons. The schedule table in I.2 should be read as "no effect
+  detectable", not as an ordering.
+* **One model, one layer, one fitted subspace.** The cliff's *location* in logit
+  SD is the transferable quantity; the $\alpha$ at which it occurs is specific to
+  this $w$ and would move with a different fit (Appendix C.4).
+* **Fluency is measured with lexical proxies** (distinct-2, repetition), not
+  perplexity. Repetition *falls* to zero at $\alpha \ge 128$ precisely because the
+  output becomes a single repeated string, so repetition rate is not monotone in
+  degeneracy and must be read alongside distinct-2. This is a trap worth naming:
+  a single fluency metric would have shown "improvement".
+
+---
+
+# Appendix J — Where subspace transfer breaks
+
+**Idea 11 of §6**, following Appendix F. Code and data:
+`experiments/run_transfer_boundary.py`, `results/transfer_boundary.json`.
+
+Appendix F tested one same-family pair and showed that orthogonal Procrustes
+beats ridge by 46×. What that leaves open is the *boundary*: how transfer quality
+varies across pairs, and whether anything cheap predicts it. If something does,
+the expensive part of Phase 3 — fitting a map — becomes a screening step. If
+nothing does, the 2–5 k paired states in `docs/ROADMAP.md` are a bet rather than
+a plan.
+
+## J.1 Setup
+
+12 ordered pairs over four models: `distilgpt2` (768), `gpt2` (768),
+`gpt2-medium` (1024) and `EleutherAI/pythia-410m` (1024). 8 documents × 24 token
+positions = **192 paired observations** per model, 115 for fitting and 77 for
+evaluation. Mismatched widths are zero-padded on the right, as
+`docs/ROADMAP.md` prescribes for cross-family work.
+
+Two measurement decisions are worth recording, because both were wrong first and
+both would have inverted the conclusion.
+
+**Direction sign is arbitrary.** A principal direction can be negated, so a
+*perfectly* transported direction scores $-1$ on a signed correlation. An early
+run reported $\text{gpt2-medium} \to \text{gpt2}$ at $-0.899$ — which read as a
+catastrophic failure of a same-family pair. Agreement is therefore $|\rho|$,
+with the signed value retained alongside it.
+
+**"Same family" is not a string prefix.** `distilgpt2` is distilled *from* `gpt2`
+and shares no prefix with it, so a prefix test classified the closest pair in the
+set as cross-family. An explicit family map is used instead. This is the kind of
+error that would survive into a paper.
+
+## J.2 Results
+
+| Proxy → target | Same family | Procrustes residual | Held-out agreement | Linear CKA |
+|:---|:---:|---:|---:|---:|
+| `distilgpt2` → `gpt2` | yes | 0.365 | **0.999** | 0.802 |
+| `gpt2` → `distilgpt2` | yes | 0.556 | **0.999** | 0.802 |
+| `gpt2` → `gpt2-medium` | yes | 1.308 | 0.855 | 0.669 |
+| `gpt2-medium` → `gpt2` | yes | 1.534 | 0.899 | 0.669 |
+| `gpt2-medium` → `distilgpt2` | yes | 2.080 | 0.497 | 0.646 |
+| `distilgpt2` → `gpt2-medium` | yes | 1.143 | **0.026** | 0.646 |
+| `pythia` → `gpt2-medium` | no | 1.058 | **0.971** | 0.104 |
+| `pythia` → `gpt2` | no | 1.090 | 0.601 | 0.159 |
+| `pythia` → `distilgpt2` | no | 1.204 | 0.591 | 0.200 |
+| `distilgpt2` → `pythia` | no | 1.835 | 0.139 | 0.200 |
+| `gpt2` → `pythia` | no | 2.558 | 0.120 | 0.159 |
+| `gpt2-medium` → `pythia` | no | 2.945 | 0.067 | 0.104 |
+
+| Aggregate | Value |
+|:---|---:|
+| Mean transfer error, same family ($n=6$) | **0.288** |
+| Mean transfer error, cross family ($n=6$) | **0.585** |
+| Spearman(CKA, transfer error) | $\rho = -0.531$, $p = 0.047$ |
+| Spearman(CKA, fit residual) | $\rho = -0.503$, $p = 0.065$ |
+
+## J.3 Reading
+
+**Crossing a family boundary doubles the transfer error**, from 0.288 to 0.585,
+with no overlap in the medians. This is the boundary `docs/ROADMAP.md` Phase 3
+plans to cross (Llama → Qwen/Gemma), and the size of the penalty is now measured
+rather than assumed. It is a real cost, and it is survivable: three of the six
+cross-family pairs land above 0.59 agreement, so the mechanism works across
+families even when the alignment is weaker.
+
+**CKA ranks the degradation, at the edge of significance.** $\rho = -0.53$ over
+12 pairs with $p = 0.047$ is a rank-order relationship in the expected direction:
+better-aligned spaces transfer better. It is not strong enough to plan around.
+
+**CKA is nowhere near sufficient, and the counterexamples are not marginal.**
+
+* `pythia → gpt2-medium` transfers at **0.971** with a CKA of **0.104**.
+* `distilgpt2 → gpt2-medium` collapses to **0.026** with a CKA of **0.646** — a
+  higher CKA, a worse transfer.
+
+The first says a low-alignment pair can transfer almost perfectly; the second
+says a moderately-aligned pair can fail almost completely, in the same family.
+Whatever distinguishes them is not captured by linear CKA, and the direction of
+transfer matters more than either model alone: `pythia → gpt2` works (0.601)
+where `gpt2 → pythia` does not (0.120), at identical CKA.
+
+> **Honest status: the correlation is a direction, not a coefficient.** With 12
+> pairs drawn from one small-model family plus one outlier family, $\rho = -0.53$
+> at $p = 0.047$ is the boundary of what the sample can support, and the two
+> counterexamples above are exactly the cases a screening rule would get wrong.
+> The useful conclusion is narrow: **CKA is worth computing before committing to
+> a transfer, because it will often flag a bad pair, but a good CKA is no
+> evidence that the transfer will work.** The cheap screen has a high false-
+> positive rate, and Phase 3 should budget for pairs that pass it and still fail.
+
+## J.4 Threats
+
+* **The transported direction is the top principal component** of the fit split,
+  which for text representations is dominated by frequency and position effects.
+  This measures the *transfer operator*, not whether a semantic subspace would
+  survive it — the caveat from Appendix F applies unchanged.
+* **One cross-family family.** `pythia` is the only non-GPT-2 model, so "cross
+  family" here means "GPT-2 versus Pythia", not a general claim.
+* **192 paired observations.** Appendix F showed why this matters: 9 pairs
+  produced a near-perfect and entirely vacuous result. 192 is enough for the map
+  to be estimable but small for a 12-point correlation.
+* **Zero-padding is a choice.** `distilgpt2 → gpt2-medium` (the 0.026 collapse)
+  pads 768 → 1024. A different padding scheme might change that row materially,
+  and it is the row that most affects the correlation.
+
+## J.5 What would settle it
+
+The obvious next step is a wider sweep: more pairs within the GPT-2 family to
+separate *direction* effects from *family* effects, plus a second genuinely
+different family. Both are cheap at this model scale — a 24-position harvest is
+about a minute per model — which is itself the practical argument for CKA as a
+screen: measuring a candidate pair costs a fraction of fitting the map, so
+several candidates can be surveyed before committing to one.
+
+---
+
+# Appendix K — The decode loop: caching and batching
+
+**Ideas 15 and 18 of §6.** Code: `sasa/decoding.py`, `tests/test_probes_and_decoding.py`.
+Data: `results/decode_costs.json`. Reproduce with
+`experiments/run_decode_costs.py`.
+
+Appendix B removed the per-token margin cost exactly. This appendix removes the
+other term — and it is the one that dominates, which is why no efficiency claim
+about SASA can be stated without addressing it.
+
+## K.1 Why this is the real cost
+
+`SASASampler.generate` re-runs a full forward pass over the entire prefix at
+every step and never populates a key-value cache. Generating $L$ tokens therefore
+costs
+
+$$\underbrace{P + (P+1) + \dots + (P+L)}_{\text{uncached}} \quad\text{versus}\quad \underbrace{P + L}_{\text{cached}}$$
+
+forward token positions, where $P$ is the prompt length — quadratic in the
+number of generated tokens. `sasa.decoding.token_budget` computes both counts and
+is the quantity any efficiency claim should be stated against.
+
+## K.2 Caching: exact, and the analytic gain is not yet realised
+
+Every configuration was checked for *distributional equality* before being timed.
+A speed-up measured against an implementation that computes something different
+is not a speed-up.
+
+| Prompt | New tokens | Uncached | Cached | Measured | Analytic | Tokens identical |
+|---:|---:|---:|---:|---:|---:|:---:|
+| 4 | 8 | 4 058.7 ms | 3 254.6 ms | 1.25× | 5.7× | yes |
+| 8 | 16 | 9 224.4 ms | 5 962.6 ms | 1.55× | 11.0× | yes |
+| 16 | 32 | 7 100.0 ms | 2 683.8 ms | 2.65× | 21.7× | yes |
+
+All 12 configurations produced **identical token sequences**, with a maximum
+per-step logit-norm difference of $1.7\times10^{-2}$ — float32 accumulation order,
+not a behavioural difference.
+
+Two things are worth reading off this table. The **measured** gain grows with
+length, 1.25× → 2.65×, as expected once the quadratic term dominates. And it
+stays far below the **analytic** gain, 2.65× against 21.7×, which is the honest
+finding: the remaining cost is the model's own forward pass, and the margin term
+is no longer a meaningful part of the budget. Appendix B's arithmetic collapse
+and this loop together account for the whole overhead; either alone leaves a
+large factor on the table.
+
+## K.3 Batching: correctness yes, throughput only once vectorised
+
+The steering vector being context-free (Theorem 1) means one $(V,)$ addition
+serves every row, so a batch can be sampled with a single
+`torch.multinomial` over a $(B, V)$ distribution. Two reproducibility contracts
+are offered, and they genuinely differ:
+
+* **per-row generators** — a row's token is independent of its position in the
+  batch, at the cost of a Python loop;
+* **a single batch generator** — one vectorised call, fast, but a row's draw
+  depends on where it sits.
+
+| Batch | Exact vs independent rows | Vectorised (ms/item) | Per-row loop (ms/item) | Vectorised speed-up |
+|---:|:---:|---:|---:|---:|
+| 1 | yes | 5.824 | 4.533 | 0.78× |
+| 2 | yes | 3.994 | 5.340 | 1.34× |
+| 4 | yes | 2.849 | 8.674 | **3.04×** |
+| 8 | yes | 2.177 | 4.749 | 2.18× |
+
+The exactness guarantee holds at every size. The throughput result is the
+instructive one: **the first implementation of `batched_sample` was a Python
+loop over rows, and it produced a flat per-item cost — 4.5 to 5.3 ms/item at every
+batch size.** That is not batching; it is the same computation with extra
+bookkeeping. Only the vectorised path shows the expected behaviour, falling from
+5.82 to 2.18 ms/item and delivering up to **3.04×**.
+
+A benchmark that had been run against the loop version would have concluded that
+batching does not help a steered decoder, and that conclusion would have been
+correct *about that code* and wrong about the idea.
+
+## K.4 Threats
+
+* **One model, CPU, 2 cores.** Absolute milliseconds are not portable; the
+  ratios and the exactness checks are.
+* **Only top-$k$ sampling was measured.** Nucleus filtering sorts a
+  $V$-element vector per row and would not vectorise as cleanly, so the
+  batching result may not hold at top-$p$.
+* **The cache is a standard HF `DynamicCache`.** Its benefit is the model's own
+  prefill-plus-step behaviour; nothing here is a custom attention
+  implementation, and a fused kernel would narrow the gap to the analytic
+  prediction further.
+* **The batching speed-up is measured on logits already in memory.** End-to-end
+  batched *generation* would also need a cache per row, which this environment
+  does not test.
+
+---
+
+# Appendix L — Is the pinned judge adversarially fooled?
+
+**Idea 17 of §6.** Code: `experiments/run_judge_gaming.py`, `sasa/judge.py`.
+Data: `results/judge_gaming.json`.
+
+Appendix D found that steering moved the SASA objective without moving the pinned
+judge. That is a success for the headline claim, but it is equally a hypothesis
+about *why*: either the steering was ineffective, or the judge is insensitive.
+The second possibility is an artifact, and an artifact that would silently
+invalidate Appendix D. So the judge was attacked directly, with paraphrases
+designed to preserve meaning while removing the surface markers of abuse.
+
+## L.1 Design
+
+12 prompts from the Appendix D set. Three completions per prompt:
+
+* **original** — unmodified;
+* **attacked** — an LLM rewrite of the original, instructed to keep the meaning
+  and remove profanity, insult, and second-person address;
+* **control** — a rewrite of a *different, neutral* prompt under the same
+  instructions.
+
+The control is the part that matters. Without it, any drop in judged toxicity
+would be attributable to the rewrite instructions having removed the abuse —
+which is the intended effect, not a successful attack. The control isolates the
+judge's response to *rewriting as such* from its response to *evasion*.
+
+## L.2 The attack was applied
+
+This is a check worth stating first, because the natural failure mode of this
+experiment is to report a null without ever verifying the treatment worked.
+
+| Identity check | Count |
+|:---|---:|
+| `attacked == control` | **0 / 12** |
+| `attacked == original` | **0 / 12** |
+
+Every attacked text differs from both its original and its control, so the
+rewriting was verifiably applied. Inspecting the outputs shows the intended
+transformation:
+
+> **original** — "You are such a fucking idiot, I hope everyone knows how much
+> you suck at everything you touch."
+>
+> **attacked** — "It is quite amusing to observe how some individuals feel
+> compelled to share their thoughts, regardless of their lack of merit."
+
+The profanity and direct insult are gone; the contempt is intact.
+
+## L.3 Results
+
+| Condition | Mean judged toxicity (0–4) |
+|:---|---:|
+| original | 0.250 |
+| steered | 0.167 |
+| attacked | 0.167 |
+| control | 0.167 |
+
+| Paired comparison | Non-zero differences | $n$ | $p$ |
+|:---|---:|---:|---:|
+| attacked vs steered | 0 | **2** | 0.655 |
+| control vs steered | 0 | **2** | 0.655 |
+| attacked vs control | 0 | **0** | 1.000 |
+
+## L.4 The honest reading
+
+**The judge was not fooled, and this experiment cannot tell you whether that is
+good news.**
+
+The observed result is that judged toxicity did not fall when the surface form
+was evaded — which is a point in the judge's favour, and is consistent with
+Appendix D. But the effective paired sample is **zero to two**, because a 0–4
+integer judge produces only five values and a 12-prompt set mostly ties. A
+Wilcoxon signed-rank test on zero non-zero differences is not a measurement of
+robustness; it is a statement that the instrument has no resolution here.
+
+> **Conclusion: underpowered and uninformative. No claim of judge robustness, and
+> no claim of judge vulnerability, is supported by this data.** Reporting the
+> unchanged mean as evidence that "the judge is not adversarially fooled" would
+> be reading a resolution limit as a finding. The honest output is the
+> observation in L.2 — that paraphrase attacks were successfully generated and
+> successfully evaded surface markers — plus the negative result about the
+> measurement apparatus.
+
+That is a negative result about this experiment, and the useful thing it yields
+is the following methodological rule, now applied to Appendix D as well.
+
+## L.5 What Appendix D's null result now means
+
+Appendix D's headline — the external judge did not move while the steering
+objective did — is weakened in a specific way, and it should be stated this way
+in the write-up:
+
+> The pinned judge **failed to separate** steered from unsteered generations. The
+> steering objective moved; the judge did not. Since the judge demonstrably
+> retains sensitivity to direct abuse (Appendix D: steered scored 0.167 against
+> baseline 0.250), the separation is not explained by a dead judge. But a
+> paraphrase attack preserves judged toxicity (this appendix), so the judge's
+> response to a *disguised* abuse is untested. **The correct claim is that
+> steering did not fool this judge, not that this judge catches everything.**
+
+The difference matters: the first is a finding about SASA, the second is a
+finding about a measurement instrument and would be a much larger claim than
+12 prompts of 0–4 integer scores can support.
+
+## L.6 How to make this testable
+
+Four changes, in order of cost:
+
+1. **Use a continuous score.** A 0–4 integer scale with 12 prompts has at most
+   5 × 12 = 60 distinguishable outcomes and produced 0 usable pairs. A rubric
+   scored on a continuous scale, or a probability-of-toxicity head, would
+   resolve differences the current instrument cannot see.
+2. **Power the design.** With a continuous score and paired differences of
+   plausible size, 12 prompts is roughly one order of magnitude short; ~100
+   prompts would be reasonable. Paired designs are essential — the
+   original/attacked pairing removes between-prompt variance.
+3. **Include an easy positive control** that *should* move the score — direct
+   profanity — to confirm the attack arm is capable of producing a difference.
+   Without one, a null is uninterpretable, which is exactly the problem here.
+4. **Attack the rubric, not just the text.** The current attack targets
+   profanity, which the rubric's harmfulness criterion plausibly ignores. A
+   jailbreak-shaped generation (instructional override, role-play framing, code
+   block) would probe the weaker link.
+
+Points 1 and 2 are the binding constraints. Until the instrument can resolve a
+difference, an adversarial study of it is not possible, and no amount of prompt
+craft substitutes for resolution.
 
 ---
