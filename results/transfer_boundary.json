@@ -1,0 +1,216 @@
+{
+  "meta": {
+    "models": [
+      "distilgpt2",
+      "gpt2",
+      "gpt2-medium",
+      "EleutherAI/pythia-410m"
+    ],
+    "dims": {
+      "distilgpt2": 768,
+      "gpt2": 768,
+      "gpt2-medium": 1024,
+      "EleutherAI/pythia-410m": 1024
+    },
+    "padded_to": 1024,
+    "max_positions": 24,
+    "n_documents": 8
+  },
+  "pairs": [
+    {
+      "proxy": "distilgpt2",
+      "target": "gpt2",
+      "proxy_dim": 768,
+      "target_dim": 768,
+      "padded_to": 1024,
+      "zero_padding_needed": false,
+      "same_family": true,
+      "n_pairs": 192,
+      "n_fit": 115,
+      "procrustes_residual": 0.3645141124725342,
+      "heldout_rank_agreement": 0.9989904165267944,
+      "heldout_rank_agreement_signed": 0.9989904165267944,
+      "linear_cka": 0.8017606620550846
+    },
+    {
+      "proxy": "distilgpt2",
+      "target": "gpt2-medium",
+      "proxy_dim": 768,
+      "target_dim": 1024,
+      "padded_to": 1024,
+      "zero_padding_needed": true,
+      "same_family": true,
+      "n_pairs": 192,
+      "n_fit": 115,
+      "procrustes_residual": 1.142798900604248,
+      "heldout_rank_agreement": 0.026234706863760948,
+      "heldout_rank_agreement_signed": -0.026234706863760948,
+      "linear_cka": 0.6458631822035892
+    },
+    {
+      "proxy": "distilgpt2",
+      "target": "EleutherAI/pythia-410m",
+      "proxy_dim": 768,
+      "target_dim": 1024,
+      "padded_to": 1024,
+      "zero_padding_needed": true,
+      "same_family": false,
+      "n_pairs": 192,
+      "n_fit": 115,
+      "procrustes_residual": 1.8348509073257446,
+      "heldout_rank_agreement": 0.13900843262672424,
+      "heldout_rank_agreement_signed": -0.13900843262672424,
+      "linear_cka": 0.1995927118927692
+    },
+    {
+      "proxy": "gpt2",
+      "target": "distilgpt2",
+      "proxy_dim": 768,
+      "target_dim": 768,
+      "padded_to": 1024,
+      "zero_padding_needed": false,
+      "same_family": true,
+      "n_pairs": 192,
+      "n_fit": 115,
+      "procrustes_residual": 0.5563141107559204,
+      "heldout_rank_agreement": 0.998785138130188,
+      "heldout_rank_agreement_signed": 0.998785138130188,
+      "linear_cka": 0.8017625984040878
+    },
+    {
+      "proxy": "gpt2",
+      "target": "gpt2-medium",
+      "proxy_dim": 768,
+      "target_dim": 1024,
+      "padded_to": 1024,
+      "zero_padding_needed": true,
+      "same_family": true,
+      "n_pairs": 192,
+      "n_fit": 115,
+      "procrustes_residual": 1.3082891702651978,
+      "heldout_rank_agreement": 0.8548601269721985,
+      "heldout_rank_agreement_signed": 0.8548601269721985,
+      "linear_cka": 0.6693692553953793
+    },
+    {
+      "proxy": "gpt2",
+      "target": "EleutherAI/pythia-410m",
+      "proxy_dim": 768,
+      "target_dim": 1024,
+      "padded_to": 1024,
+      "zero_padding_needed": true,
+      "same_family": false,
+      "n_pairs": 192,
+      "n_fit": 115,
+      "procrustes_residual": 2.5579817295074463,
+      "heldout_rank_agreement": 0.1195891946554184,
+      "heldout_rank_agreement_signed": -0.1195891946554184,
+      "linear_cka": 0.15856540428366592
+    },
+    {
+      "proxy": "gpt2-medium",
+      "target": "distilgpt2",
+      "proxy_dim": 1024,
+      "target_dim": 768,
+      "padded_to": 1024,
+      "zero_padding_needed": true,
+      "same_family": true,
+      "n_pairs": 192,
+      "n_fit": 115,
+      "procrustes_residual": 2.0795798301696777,
+      "heldout_rank_agreement": 0.4974823594093323,
+      "heldout_rank_agreement_signed": 0.4974823594093323,
+      "linear_cka": 0.6458558800738976
+    },
+    {
+      "proxy": "gpt2-medium",
+      "target": "gpt2",
+      "proxy_dim": 1024,
+      "target_dim": 768,
+      "padded_to": 1024,
+      "zero_padding_needed": true,
+      "same_family": true,
+      "n_pairs": 192,
+      "n_fit": 115,
+      "procrustes_residual": 1.5338677167892456,
+      "heldout_rank_agreement": 0.8988783955574036,
+      "heldout_rank_agreement_signed": -0.8988783955574036,
+      "linear_cka": 0.669366142247056
+    },
+    {
+      "proxy": "gpt2-medium",
+      "target": "EleutherAI/pythia-410m",
+      "proxy_dim": 1024,
+      "target_dim": 1024,
+      "padded_to": 1024,
+      "zero_padding_needed": false,
+      "same_family": false,
+      "n_pairs": 192,
+      "n_fit": 115,
+      "procrustes_residual": 2.944610357284546,
+      "heldout_rank_agreement": 0.06675995141267776,
+      "heldout_rank_agreement_signed": 0.06675995141267776,
+      "linear_cka": 0.10401969630144088
+    },
+    {
+      "proxy": "EleutherAI/pythia-410m",
+      "target": "distilgpt2",
+      "proxy_dim": 1024,
+      "target_dim": 768,
+      "padded_to": 1024,
+      "zero_padding_needed": true,
+      "same_family": false,
+      "n_pairs": 192,
+      "n_fit": 115,
+      "procrustes_residual": 1.204177975654602,
+      "heldout_rank_agreement": 0.5906810164451599,
+      "heldout_rank_agreement_signed": -0.5906810164451599,
+      "linear_cka": 0.19959323676861856
+    },
+    {
+      "proxy": "EleutherAI/pythia-410m",
+      "target": "gpt2",
+      "proxy_dim": 1024,
+      "target_dim": 768,
+      "padded_to": 1024,
+      "zero_padding_needed": true,
+      "same_family": false,
+      "n_pairs": 192,
+      "n_fit": 115,
+      "procrustes_residual": 1.0895893573760986,
+      "heldout_rank_agreement": 0.6014606356620789,
+      "heldout_rank_agreement_signed": -0.6014606356620789,
+      "linear_cka": 0.15856897839887407
+    },
+    {
+      "proxy": "EleutherAI/pythia-410m",
+      "target": "gpt2-medium",
+      "proxy_dim": 1024,
+      "target_dim": 1024,
+      "padded_to": 1024,
+      "zero_padding_needed": false,
+      "same_family": false,
+      "n_pairs": 192,
+      "n_fit": 115,
+      "procrustes_residual": 1.0576403141021729,
+      "heldout_rank_agreement": 0.9706945419311523,
+      "heldout_rank_agreement_signed": -0.9706945419311523,
+      "linear_cka": 0.1040444639310278
+    }
+  ],
+  "correlation": {
+    "cka_vs_transfer_error": {
+      "rho": -0.5314685314685315,
+      "p": 0.047249491763997176
+    },
+    "cka_vs_fit_residual": {
+      "rho": -0.5034965034965035,
+      "p": 0.06535456742674071
+    }
+  },
+  "mean_transfer_error": {
+    "same_family": 0.28746147609005374,
+    "cross_family": 0.5853010378777981
+  },
+  "caveat": "the transferred direction is the top principal component of the fit split, which is dominated by frequency and position effects; this measures the transfer operator, not whether a semantic subspace would survive it"
+}
