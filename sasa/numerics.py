@@ -42,16 +42,22 @@ class FitResult:
     """Output of a single subspace fit.
 
     Attributes:
-        weight: The decision direction ``w``, shape ``(d,)``.
+        weight: The decision direction ``w``, shape ``(d,)``. Always returned in
+            the *original* feature space, even when a PCA pre-conditioner was
+            used, so downstream code needs no special case.
         bias: The decision bias ``b``, shape ``(d,)``.
         mu_neg: Class mean of the non-toxic (positive) class, shape ``(d,)``.
         mu_pos: Class mean of the toxic (negative) class, shape ``(d,)``.
-        sigma: The regularised shared covariance actually used, shape
-            ``(d, d)``.
+        sigma: The regularised shared covariance actually used, shape ``(d, d)``
+            in the reduced space when ``basis`` is not None, else ``(d, d)``.
         solver: Name of the solver that produced ``weight``.
         shrinkage: The shrinkage coefficient that was applied.
         raw_condition: Condition number of the unregularised covariance.
         reg_condition: Condition number of the regularised covariance.
+        basis: Optional PCA projection ``(k, d)`` used before the solve, or
+            None. Applying it to a feature matrix performs the reduction.
+        effective_dim: Dimensionality of the space the solve happened in.
+        explained_variance: Fraction of pooled variance retained by ``basis``.
     """
 
     weight: torch.Tensor
@@ -63,6 +69,23 @@ class FitResult:
     shrinkage: float
     raw_condition: float
     reg_condition: float
+    basis: Optional[torch.Tensor] = None
+    effective_dim: Optional[int] = None
+    explained_variance: Optional[float] = None
+
+    def project(self, features: torch.Tensor) -> torch.Tensor:
+        """Map features into the reduced space the solve happened in.
+
+        Args:
+            features: Feature matrix, shape ``(N, d)``.
+
+        Returns:
+            The reduced features, shape ``(N, k)``; unchanged when no
+            pre-conditioner was used.
+        """
+        if self.basis is None:
+            return features
+        return features @ self.basis.T
 
     def as_dict(self) -> Dict[str, float]:
         """Return scalar diagnostics as a plain dictionary."""
@@ -71,6 +94,8 @@ class FitResult:
             "shrinkage": self.shrinkage,
             "raw_condition": self.raw_condition,
             "reg_condition": self.reg_condition,
+            "effective_dim": self.effective_dim or self.weight.shape[0],
+            "explained_variance": self.explained_variance,
         }
 
 
@@ -173,6 +198,7 @@ def fit_direction(
     shrinkage: Optional[float] = None,
     solver: str = "cholesky",
     ridge: float = 1e-6,
+    pca_dim: Optional[int] = None,
 ) -> FitResult:
     """Fit the SASA decision direction with a switchable solver and regulariser.
 
@@ -181,50 +207,93 @@ def fit_direction(
     features. Passing a float uses that value instead; passing ``0.0``
     reproduces an unregularised fit.
 
+    ``pca_dim`` is the important one for real hidden states. When the labelled
+    set is much smaller than the hidden size -- which is the normal case for
+    LLM activations, where ``d`` is 768 to 4096 and a realistic labelled corpus
+    is tens to hundreds of examples -- the pooled covariance has rank at most
+    ``N1 + N2 - 2`` and is therefore singular. Solving against it yields a
+    direction that interpolates the training set exactly and can generalise
+    worse than chance. Passing ``pca_dim <= min(N1+N2-2, d)`` projects onto the
+    leading principal directions first, which restores a well-posed problem.
+    The returned ``weight`` is mapped back to the original feature space.
+
     Args:
         embeddings_neg: Non-toxic embeddings, shape ``(N1, d)``.
         embeddings_pos: Toxic embeddings, shape ``(N2, d)``.
         shrinkage: Shrinkage coefficient in ``[0, 1]``, or ``None`` for
             Ledoit-Wolf estimation.
         solver: Solver passed to :func:`solve_direction`.
-        ridge: Absolute ridge used only when ``shrinkage is None`` *and*
-            Ledoit-Wolf returns zero; keeps the matrix positive definite.
+        ridge: Absolute ridge used only when no shrinkage is applied; keeps the
+            matrix positive definite.
+        pca_dim: Number of principal directions to keep, or ``None`` to solve
+            in the full space.
 
     Returns:
         A :class:`FitResult`.
 
     Raises:
-        ValueError: If inputs are shape-incompatible or ``solver`` is unknown.
-        RuntimeError: If the Cholesky factorisation fails even after
-            regularisation.
+        ValueError: If inputs are shape-incompatible, ``solver`` is unknown, or
+            ``pca_dim`` exceeds the number of available samples.
     """
-    sigma_raw = shared_covariance(embeddings_neg, embeddings_pos)
-    d = sigma_raw.shape[0]
+    sigma_raw_full = shared_covariance(embeddings_neg, embeddings_pos)
+    d = sigma_raw_full.shape[0]
     n = embeddings_neg.shape[0] + embeddings_pos.shape[0]
-
     mu_neg = embeddings_neg.mean(0)
     mu_pos = embeddings_pos.mean(0)
 
+    basis: Optional[torch.Tensor] = None
+    explained: Optional[float] = None
+    if pca_dim is not None:
+        max_dim = min(n - 2, d)
+        if pca_dim > max_dim:
+            raise ValueError(
+                f"pca_dim={pca_dim} exceeds the rank available from {n} "
+                f"samples (max {max_dim}); the fit would be singular"
+            )
+        # Directions come from the *within-class centred* pool, so the basis
+        # spans the discriminative variation rather than the global mean shift.
+        pooled = torch.cat(
+            [embeddings_neg - mu_neg, embeddings_pos - mu_pos], dim=0
+        )
+        _, svals, vh = torch.linalg.svd(pooled, full_matrices=False)
+        basis = vh[:pca_dim].contiguous()
+        total = float((svals ** 2).sum())
+        explained = float((svals[:pca_dim] ** 2).sum() / total) if total > 0 else None
+
+    if basis is None:
+        # Project the raw features; the LDA step re-centres internally.
+        neg = embeddings_neg
+        pos = embeddings_pos
+    else:
+        neg = embeddings_neg @ basis.T
+        pos = embeddings_pos @ basis.T
+
+    sigma_raw = (neg - neg.mean(0)).T @ (neg - neg.mean(0))
+    sigma_raw = sigma_raw + (pos - pos.mean(0)).T @ (pos - pos.mean(0))
+    sigma_raw = sigma_raw / (n - 2)
+
+    k = sigma_raw.shape[0]
     lam = (
         float(shrinkage) if shrinkage is not None
         else ledoit_wolf_shrinkage(sigma_raw, n)
     )
     target = torch.diagonal(sigma_raw).mean()
-    sigma = sigma_raw + lam * target * torch.eye(d, dtype=sigma_raw.dtype,
+    sigma = sigma_raw + lam * target * torch.eye(k, dtype=sigma_raw.dtype,
                                                 device=sigma_raw.device)
     if lam == 0.0:
-        sigma = sigma + ridge * torch.eye(d, dtype=sigma_raw.dtype,
+        sigma = sigma + ridge * torch.eye(k, dtype=sigma_raw.dtype,
                                           device=sigma_raw.device)
 
     try:
-        w = solve_direction(sigma, mu_neg - mu_pos, solver=solver)
+        w_k = solve_direction(sigma, neg.mean(0) - pos.mean(0), solver=solver)
     except RuntimeError:
         if solver != "cholesky":
             raise
-        # Fall back to a slightly stronger ridge, then retry once.
-        sigma = sigma + ridge * torch.eye(d, dtype=sigma_raw.dtype,
+        sigma = sigma + ridge * torch.eye(k, dtype=sigma_raw.dtype,
                                           device=sigma_raw.device)
-        w = solve_direction(sigma, mu_neg - mu_pos, solver="cholesky")
+        w_k = solve_direction(sigma, neg.mean(0) - pos.mean(0), solver="cholesky")
+
+    w = w_k if basis is None else (basis.T @ w_k)
 
     raw_cond = float(torch.linalg.cond(sigma_raw).item())
     reg_cond = float(torch.linalg.cond(sigma).item())
@@ -239,6 +308,9 @@ def fit_direction(
         shrinkage=lam,
         raw_condition=raw_cond,
         reg_condition=reg_cond,
+        basis=basis,
+        effective_dim=k,
+        explained_variance=explained,
     )
 
 

@@ -222,3 +222,92 @@ class TestFitDirection:
         neg, pos = _clusters(dim=12, seed=12)
         res = fit_direction(neg, pos)
         assert torch.allclose(res.bias, 0.5 * (res.mu_neg + res.mu_pos), atol=1e-6)
+
+
+class TestPCAPreconditioning:
+    """The ``pca_dim`` path, which is what makes small labelled sets usable."""
+
+    def _rank_deficient_case(self, d: int = 128, n: int = 40, seed: int = 20):
+        """Return a labelled set with fewer samples than dimensions."""
+        g = torch.Generator().manual_seed(seed)
+        axis = torch.zeros(d)
+        axis[0] = 1.0
+        neg = torch.randn(n // 2, d, generator=g) + 1.0 * axis
+        pos = torch.randn(n // 2, d, generator=g) - 1.0 * axis
+        t = torch.Generator().manual_seed(seed + 1)
+        neg_te = torch.randn(150, d, generator=t) + 1.0 * axis
+        pos_te = torch.randn(150, d, generator=t) - 1.0 * axis
+        return neg, pos, neg_te, pos_te
+
+    def test_reduces_train_heldout_gap(self):
+        """Reducing the dimension must shrink the optimism of the fit."""
+        neg, pos, neg_te, pos_te = self._rank_deficient_case()
+        full = fit_direction(neg, pos, solver="cholesky")
+        low = fit_direction(neg, pos, solver="cholesky", pca_dim=8)
+        gap_full = (heldout_separability(full.weight, full.bias, neg, pos)
+                    - heldout_separability(full.weight, full.bias, neg_te, pos_te))
+        gap_low = (heldout_separability(low.weight, low.bias, neg, pos)
+                   - heldout_separability(low.weight, low.bias, neg_te, pos_te))
+        assert gap_low < gap_full
+
+    def test_weight_is_returned_in_full_feature_space(self):
+        """Downstream code sees a (d,) weight whether or not PCA was used."""
+        neg, pos, _, _ = self._rank_deficient_case()
+        res = fit_direction(neg, pos, pca_dim=8)
+        assert res.weight.shape == (neg.shape[1],)
+        assert res.bias.shape == (neg.shape[1],)
+        assert res.effective_dim == 8
+        assert res.basis.shape == (8, neg.shape[1])
+
+    def test_reduced_scores_match_manual_projection(self):
+        """`project` then score must equal the full-space score."""
+        neg, pos, neg_te, pos_te = self._rank_deficient_case()
+        res = fit_direction(neg, pos, pca_dim=6)
+        s_direct = (neg_te - res.bias) @ res.weight
+        s_proj = (res.project(neg_te) - res.project(res.bias.unsqueeze(0))) \
+            @ res.project(res.weight.unsqueeze(0)).squeeze()
+        assert torch.allclose(s_direct, s_proj, atol=1e-3, rtol=1e-2)
+
+    def test_explained_variance_is_recorded(self):
+        """The retained fraction of pooled variance is reported."""
+        neg, pos, _, _ = self._rank_deficient_case()
+        res = fit_direction(neg, pos, pca_dim=8)
+        assert 0.0 < res.explained_variance < 1.0
+
+    def test_rejects_pca_dim_above_available_rank(self):
+        """Asking for more directions than samples is a clear error."""
+        neg, pos, _, _ = self._rank_deficient_case(d=64, n=20)
+        with pytest.raises(ValueError, match="exceeds the rank"):
+            fit_direction(neg, pos, pca_dim=40)
+
+    def test_beats_the_reference_fit_in_the_small_sample_regime(self):
+        """The headline claim of the numerics module, as a regression test.
+
+        With fewer labelled examples than hidden dimensions, the pooled
+        covariance is singular. The reference fit (absolute 1e-6 ridge plus an
+        explicit inverse) then returns a direction that is no better than
+        chance on held-out data. Cholesky with scale-aware shrinkage should do
+        materially better. The margins below are deliberately loose so the test
+        tracks the *direction* of the effect, not a specific number.
+        """
+        from sasa.subspace_learner import SubspaceLearner
+
+        d, n = 96, 36
+        g = torch.Generator().manual_seed(30)
+        axis = torch.zeros(d)
+        axis[0] = 1.0
+        neg = torch.randn(n // 2, d, generator=g) + 1.0 * axis
+        pos = torch.randn(n // 2, d, generator=g) - 1.0 * axis
+        t = torch.Generator().manual_seed(31)
+        neg_te = torch.randn(300, d, generator=t) + 1.0 * axis
+        pos_te = torch.randn(300, d, generator=t) - 1.0 * axis
+
+        ref = SubspaceLearner(d)
+        params = ref.fit(neg, pos)
+        acc_ref = heldout_separability(params.w_v, params.b_v, neg_te, pos_te)
+
+        ours = fit_direction(neg, pos, solver="cholesky")
+        acc_ours = heldout_separability(ours.weight, ours.bias, neg_te, pos_te)
+
+        assert acc_ours > acc_ref
+        assert acc_ours > 0.55

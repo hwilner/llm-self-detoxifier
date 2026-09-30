@@ -1,0 +1,32 @@
+{
+  "meta": {
+    "proxy": "distilgpt2",
+    "target": "gpt2",
+    "proxy_dim": 768,
+    "target_dim": 768,
+    "n_pairs": 192,
+    "n_documents": 8,
+    "n_fit": 115,
+    "n_test": 77,
+    "ridge_lambda": 1.0
+  },
+  "procrustes": {
+    "fit_residual": 0.3644455671310425
+  },
+  "ridge": {
+    "fit_residual": 16.644201278686523,
+    "lambda": 1.0
+  },
+  "u4_rule": {
+    "criterion": "held-out margin-preservation error; Procrustes wins ties",
+    "procrustes_rank_agreement": 0.9989379644393921,
+    "procrustes_relative_l2": 0.05325691029429436,
+    "winner": "orthogonal_procrustes",
+    "tie_threshold": "ridge must beat Procrustes by >10% to be adopted"
+  },
+  "representation_alignment": {
+    "linear_cka": 0.8017606620550846,
+    "top_canonical_correlation": 1.0000003576278687,
+    "median_canonical_correlation": 1.0
+  }
+}
