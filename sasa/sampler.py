@@ -35,6 +35,8 @@ class SASASampler:
             logit; all other tokens receive zero margin.
         gate_threshold: If set, steering is applied only when the current
             context margin is below this threshold (issue #43).
+        circuit_breaker_k: If set, generation aborts when the context margin
+            stays on the toxic side for k consecutive steps (issue #45).
     """
     
     def __init__(
@@ -43,7 +45,8 @@ class SASASampler:
         alpha: float = 1.0,
         temperature: float = 1.0,
         margin_top_k: Optional[int] = None,
-        gate_threshold: Optional[float] = None
+        gate_threshold: Optional[float] = None,
+        circuit_breaker_k: Optional[int] = None
     ):
         """
         Initialize SASA sampler.
@@ -60,12 +63,19 @@ class SASASampler:
                 below this value. E.g. 0.0 steers only when the context is
                 on the toxic side of the boundary; small positive values
                 also steer in the boundary's vicinity.
+            circuit_breaker_k: If set, generation aborts early when the
+                context margin stays below `gate_threshold` (or 0.0 if no
+                gate is set) for k consecutive steps — a decode-time refusal
+                that fires when steering alone cannot pull the context back
+                (issue #45). The result dict then includes
+                'stopped_by_circuit_breaker': True.
         """
         self.subspace_learner = subspace_learner
         self.alpha = alpha
         self.temperature = temperature
         self.margin_top_k = margin_top_k
         self.gate_threshold = gate_threshold
+        self.circuit_breaker_k = circuit_breaker_k
 
     def _is_multilayer_ensemble(self) -> bool:
         """True when the learner is a MultiLayerSubspaceLearner in ensemble mode."""
@@ -287,6 +297,8 @@ class SASASampler:
             - 'text': Generated text
             - 'tokens': List of generated token IDs
             - 'scores': (Optional) Toxicity scores at each step
+            - 'stopped_by_circuit_breaker': present and True if generation
+              was aborted by the circuit breaker (issue #45)
         """
         if adapter is None:
             # Backwards-compatible path: wrap the HF model transparently.
@@ -313,6 +325,8 @@ class SASASampler:
         generated_tokens = []
         scores = [] if return_scores else None
         past_key_values = None
+        toxic_streak = 0
+        stopped_by_circuit_breaker = False
         
         with torch.no_grad():
             for _ in range(max_length):
@@ -335,6 +349,21 @@ class SASASampler:
                     # Some backbones (e.g. certain RNN/SSM implementations) do
                     # not return a cache; fall back to full forward passes.
                     past_key_values = step.past_key_values
+
+                # Circuit breaker: abort if the context stays on the toxic
+                # side of the boundary for k consecutive steps (issue #45).
+                if self.circuit_breaker_k is not None:
+                    threshold = self.gate_threshold if self.gate_threshold is not None else 0.0
+                    context_margin = self.subspace_learner.compute_margin(current_embedding)
+                    if isinstance(context_margin, torch.Tensor):
+                        context_margin = context_margin.item()
+                    if context_margin < threshold:
+                        toxic_streak += 1
+                    else:
+                        toxic_streak = 0
+                    if toxic_streak >= self.circuit_breaker_k:
+                        stopped_by_circuit_breaker = True
+                        break
                 
                 # Compute toxicity score if requested
                 if return_scores:
@@ -367,6 +396,9 @@ class SASASampler:
             'text': generated_text,
             'tokens': generated_tokens
         }
+        
+        if stopped_by_circuit_breaker:
+            result['stopped_by_circuit_breaker'] = True
         
         if return_scores:
             result['scores'] = scores
