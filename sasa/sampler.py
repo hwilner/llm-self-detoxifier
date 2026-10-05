@@ -10,7 +10,7 @@ margin information from the learned toxic/non-toxic subspace.
 
 import torch
 import torch.nn.functional as F
-from typing import Optional, Callable, Dict, Any
+from typing import Optional, Callable, Dict, Any, Tuple
 from .subspace_learner import SubspaceLearner
 
 
@@ -27,52 +27,105 @@ class SASASampler:
     where m is the margin vector and alpha controls the strength of detoxification.
     
     Attributes:
-        subspace_learner: Trained subspace learner for margin computation.
+        subspace_learner: Trained subspace learner for margin computation. May be
+            a SubspaceLearner or a MultiLayerSubspaceLearner (issue #39).
         alpha: Weight for margin term (higher = stronger detoxification).
         temperature: Sampling temperature for diversity control.
+        margin_top_k: If set, margins are computed only for the top-k tokens by
+            logit; all other tokens receive zero margin.
+        gate_threshold: If set, steering is applied only when the current
+            context margin is below this threshold (issue #43).
+        circuit_breaker_k: If set, generation aborts when the context margin
+            stays on the toxic side for k consecutive steps (issue #45).
     """
     
     def __init__(
         self,
         subspace_learner: SubspaceLearner,
         alpha: float = 1.0,
-        temperature: float = 1.0
+        temperature: float = 1.0,
+        margin_top_k: Optional[int] = None,
+        gate_threshold: Optional[float] = None,
+        circuit_breaker_k: Optional[int] = None
     ):
         """
         Initialize SASA sampler.
         
         Args:
-            subspace_learner: Trained SubspaceLearner instance.
+            subspace_learner: Trained SubspaceLearner (or MultiLayerSubspaceLearner).
             alpha: Weight for margin-based steering (default: 1.0).
                 Higher values increase detoxification strength.
             temperature: Sampling temperature (default: 1.0).
                 Lower values make sampling more deterministic.
+            margin_top_k: If set, only the top-k tokens by logit receive a
+                margin adjustment; all other tokens get zero margin.
+            gate_threshold: If set, only steer when the context margin is
+                below this value. E.g. 0.0 steers only when the context is
+                on the toxic side of the boundary; small positive values
+                also steer in the boundary's vicinity.
+            circuit_breaker_k: If set, generation aborts early when the
+                context margin stays below `gate_threshold` (or 0.0 if no
+                gate is set) for k consecutive steps — a decode-time refusal
+                that fires when steering alone cannot pull the context back
+                (issue #45). The result dict then includes
+                'stopped_by_circuit_breaker': True.
         """
         self.subspace_learner = subspace_learner
         self.alpha = alpha
         self.temperature = temperature
+        self.margin_top_k = margin_top_k
+        self.gate_threshold = gate_threshold
+        self.circuit_breaker_k = circuit_breaker_k
+
+    def _is_multilayer_ensemble(self) -> bool:
+        """True when the learner is a MultiLayerSubspaceLearner in ensemble mode."""
+        return (
+            getattr(self.subspace_learner, "selection", None) == "ensemble"
+            and hasattr(self.subspace_learner, "learners")
+        )
         
     def compute_token_margins(
         self,
         current_embedding: torch.Tensor,
-        token_embeddings: torch.Tensor
+        token_embeddings: torch.Tensor,
+        current_all_layers: Optional[Tuple[torch.Tensor, ...]] = None
     ) -> torch.Tensor:
         """
         Compute margins for all candidate tokens.
         
         For each candidate token, we compute the margin of the context that would
-        result from appending that token.
+        result from appending that token. In multi-layer ensemble mode the
+        approximation is applied per layer and margins are averaged (the input
+        token embedding is reused as the per-layer token delta approximation).
         
         Args:
             current_embedding: Current context embedding, shape (embedding_dim,).
             token_embeddings: Embeddings of all vocabulary tokens,
                 shape (vocab_size, embedding_dim).
+            current_all_layers: All-layer context embeddings (tuple of
+                (embedding_dim,) tensors); required in ensemble mode.
                 
         Returns:
             Margin values for each token, shape (vocab_size,).
         """
-        vocab_size = token_embeddings.shape[0]
-        
+        if self._is_multilayer_ensemble():
+            if current_all_layers is None:
+                raise ValueError(
+                    "MultiLayerSubspaceLearner in ensemble mode requires "
+                    "all-layer hidden states (adapter include_all_layers=True)"
+                )
+            learner = self.subspace_learner
+            per_layer_next = {
+                l: (current_all_layers[i].unsqueeze(0) + token_embeddings) / 2
+                for i, l in enumerate(learner.layers)
+            }
+            # margins per layer: (n_layers, vocab_size) -> mean over layers
+            stacked = torch.stack([
+                learner.learners[l].compute_margin(per_layer_next[l])
+                for l in learner.layers
+            ], dim=0)
+            return stacked.mean(dim=0)
+
         # For simplicity, we approximate the next context embedding as
         # a combination of current embedding and token embedding
         # In practice, this would be the actual embedding after appending the token
@@ -83,11 +136,24 @@ class SASASampler:
         
         return margins
     
+    def should_steer(self, current_embedding: torch.Tensor) -> bool:
+        """Decide whether to apply margin steering for the current context.
+
+        With no gate_threshold, steering is always on (original SASA behavior).
+        With a gate, steering activates only when the context margin falls
+        below the threshold — i.e. near or inside the toxic region.
+        """
+        if self.gate_threshold is None:
+            return True
+        context_margin = self.subspace_learner.compute_margin(current_embedding)
+        return bool(context_margin.item() < self.gate_threshold)
+    
     def adjust_logits(
         self,
         logits: torch.Tensor,
         current_embedding: torch.Tensor,
-        token_embeddings: torch.Tensor
+        token_embeddings: torch.Tensor,
+        current_all_layers: Optional[Tuple[torch.Tensor, ...]] = None
     ) -> torch.Tensor:
         """
         Adjust logits based on margin to toxic subspace.
@@ -95,17 +161,38 @@ class SASASampler:
         This implements the core SASA algorithm: combining the original logits
         with margin-based steering to guide generation away from toxic content.
         
+        If self.margin_top_k is set, margins are computed only for the top-k
+        tokens by logit; remaining tokens receive zero margin. If
+        self.gate_threshold is set and the current context is safely
+        non-toxic, logits are returned unchanged.
+        
         Args:
             logits: Original model logits, shape (vocab_size,).
             current_embedding: Current context embedding, shape (embedding_dim,).
             token_embeddings: Token embeddings for all vocabulary,
                 shape (vocab_size, embedding_dim).
+            current_all_layers: All-layer context embeddings (ensemble mode).
                 
         Returns:
             Adjusted logits, shape (vocab_size,).
         """
-        # Compute margins for all tokens
-        margins = self.compute_token_margins(current_embedding, token_embeddings)
+        if not self.should_steer(current_embedding):
+            return logits
+
+        vocab_size = logits.shape[-1]
+
+        if self.margin_top_k is not None and self.margin_top_k < vocab_size:
+            # Restrict margin computation to the top-k candidate tokens
+            top_indices = torch.topk(logits, self.margin_top_k).indices
+            margins = torch.zeros_like(logits)
+            candidate_margins = self.compute_token_margins(
+                current_embedding, token_embeddings[top_indices], current_all_layers
+            )
+            margins[top_indices] = candidate_margins
+        else:
+            margins = self.compute_token_margins(
+                current_embedding, token_embeddings, current_all_layers
+            )
         
         # Adjust logits: logits_adjusted = logits + alpha * margins
         adjusted_logits = logits + self.alpha * margins
@@ -118,7 +205,8 @@ class SASASampler:
         current_embedding: torch.Tensor,
         token_embeddings: torch.Tensor,
         top_k: Optional[int] = None,
-        top_p: Optional[float] = None
+        top_p: Optional[float] = None,
+        current_all_layers: Optional[Tuple[torch.Tensor, ...]] = None
     ) -> torch.Tensor:
         """
         Sample next token using SASA algorithm.
@@ -129,6 +217,7 @@ class SASASampler:
             token_embeddings: Token embeddings, shape (vocab_size, embedding_dim).
             top_k: If specified, only sample from top k tokens.
             top_p: If specified, use nucleus sampling with this threshold.
+            current_all_layers: All-layer context embeddings (ensemble mode).
                 
         Returns:
             Sampled token index.
@@ -137,7 +226,8 @@ class SASASampler:
         adjusted_logits = self.adjust_logits(
             logits,
             current_embedding,
-            token_embeddings
+            token_embeddings,
+            current_all_layers
         )
         
         # Apply temperature
@@ -178,13 +268,16 @@ class SASASampler:
         device: torch.device = None,
         top_k: Optional[int] = None,
         top_p: Optional[float] = None,
-        return_scores: bool = False
+        return_scores: bool = False,
+        use_cache: bool = True,
+        adapter = None
     ) -> Dict[str, Any]:
         """
         Generate text using SASA sampling.
         
         Args:
-            model: Language model to use for generation.
+            model: Language model to use for generation. Ignored when
+                `adapter` is provided (pass None or the model).
             tokenizer: Corresponding tokenizer.
             prompt: Input prompt text.
             max_length: Maximum number of tokens to generate.
@@ -192,35 +285,85 @@ class SASASampler:
             top_k: Optional top-k filtering.
             top_p: Optional nucleus sampling threshold.
             return_scores: If True, return toxicity scores at each step.
+            use_cache: If True (default), use the model's KV cache so each
+                step processes only the newest token. Falls back to full
+                forward passes if the model does not return past_key_values.
+            adapter: Optional BackboneAdapter (see sasa/adapters.py). When
+                provided, all model access goes through the adapter, making
+                SASA architecture-agnostic.
                 
         Returns:
             Dictionary containing:
             - 'text': Generated text
             - 'tokens': List of generated token IDs
             - 'scores': (Optional) Toxicity scores at each step
+            - 'stopped_by_circuit_breaker': present and True if generation
+              was aborted by the circuit breaker (issue #45)
         """
-        if device is None:
+        if adapter is None:
+            # Backwards-compatible path: wrap the HF model transparently.
+            from .adapters import HFTransformerAdapter
+            adapter = HFTransformerAdapter(model)
+
+        if self._is_multilayer_ensemble() and hasattr(adapter, "include_all_layers"):
+            adapter.include_all_layers = True
+
+        if device is None and model is not None:
             device = next(model.parameters()).device
         
-        model.eval()
+        if model is not None:
+            model.eval()
         
         # Tokenize prompt
-        input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
+        input_ids = tokenizer.encode(prompt, return_tensors="pt")
+        if device is not None:
+            input_ids = input_ids.to(device)
         
         # Get token embeddings from model
-        token_embeddings = model.get_input_embeddings().weight
+        token_embeddings = adapter.token_embeddings()
         
         generated_tokens = []
         scores = [] if return_scores else None
+        past_key_values = None
+        toxic_streak = 0
+        stopped_by_circuit_breaker = False
         
         with torch.no_grad():
             for _ in range(max_length):
-                # Get model outputs
-                outputs = model(input_ids, output_hidden_states=True)
-                logits = outputs.logits[0, -1, :]
-                
-                # Get current context embedding (last token's hidden state)
-                current_embedding = outputs.hidden_states[-1][0, -1, :]
+                # With a KV cache, only the newest token is processed after
+                # the first (prompt) forward pass.
+                if use_cache and past_key_values is not None:
+                    step_input = input_ids[:, -1:]
+                else:
+                    step_input = input_ids
+
+                step = adapter.forward_step(
+                    step_input,
+                    past_key_values=past_key_values if use_cache else None,
+                    use_cache=use_cache
+                )
+                logits = step.logits
+                current_embedding = step.hidden_state
+
+                if use_cache:
+                    # Some backbones (e.g. certain RNN/SSM implementations) do
+                    # not return a cache; fall back to full forward passes.
+                    past_key_values = step.past_key_values
+
+                # Circuit breaker: abort if the context stays on the toxic
+                # side of the boundary for k consecutive steps (issue #45).
+                if self.circuit_breaker_k is not None:
+                    threshold = self.gate_threshold if self.gate_threshold is not None else 0.0
+                    context_margin = self.subspace_learner.compute_margin(current_embedding)
+                    if isinstance(context_margin, torch.Tensor):
+                        context_margin = context_margin.item()
+                    if context_margin < threshold:
+                        toxic_streak += 1
+                    else:
+                        toxic_streak = 0
+                    if toxic_streak >= self.circuit_breaker_k:
+                        stopped_by_circuit_breaker = True
+                        break
                 
                 # Compute toxicity score if requested
                 if return_scores:
@@ -233,7 +376,8 @@ class SASASampler:
                     current_embedding,
                     token_embeddings,
                     top_k=top_k,
-                    top_p=top_p
+                    top_p=top_p,
+                    current_all_layers=step.hidden_states
                 )
                 
                 generated_tokens.append(next_token.item())
@@ -252,6 +396,9 @@ class SASASampler:
             'text': generated_text,
             'tokens': generated_tokens
         }
+        
+        if stopped_by_circuit_breaker:
+            result['stopped_by_circuit_breaker'] = True
         
         if return_scores:
             result['scores'] = scores
@@ -286,7 +433,8 @@ class BaselineSampler:
         max_length: int = 50,
         device: torch.device = None,
         top_k: Optional[int] = None,
-        top_p: Optional[float] = None
+        top_p: Optional[float] = None,
+        use_cache: bool = True
     ) -> Dict[str, Any]:
         """
         Generate text using standard sampling (no SASA).
@@ -299,6 +447,8 @@ class BaselineSampler:
             device: Device to run on (defaults to model's device).
             top_k: Optional top-k filtering.
             top_p: Optional nucleus sampling threshold.
+            use_cache: If True (default), use the model's KV cache so each
+                step processes only the newest token.
                 
         Returns:
             Dictionary containing:
@@ -314,12 +464,24 @@ class BaselineSampler:
         input_ids = tokenizer.encode(prompt, return_tensors="pt").to(device)
         
         generated_tokens = []
+        past_key_values = None
         
         with torch.no_grad():
             for _ in range(max_length):
-                # Get model outputs
-                outputs = model(input_ids)
+                if use_cache and past_key_values is not None:
+                    step_input = input_ids[:, -1:]
+                else:
+                    step_input = input_ids
+
+                outputs = model(
+                    step_input,
+                    past_key_values=past_key_values if use_cache else None,
+                    use_cache=use_cache
+                )
                 logits = outputs.logits[0, -1, :] / self.temperature
+
+                if use_cache:
+                    past_key_values = getattr(outputs, "past_key_values", None)
                 
                 # Apply top-k filtering if specified
                 if top_k is not None:

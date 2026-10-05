@@ -2,6 +2,19 @@
 
 An implementation of **SASA (Self-disciplined Autoregressive Sampling)** from the paper "Large Language Models can be Strong Self-Detoxifiers" by Ko et al. (2024). This repository provides a lightweight, training-free method to reduce toxic output generation in large language models.
 
+## Project history
+
+This repository **started as an educational implementation of the SASA paper** — built to understand the method by reproducing it from scratch: the closed-form Fisher/LDA subspace learner, the margin-based sampler, minimal dependencies, and a test suite, all following Ko et al. (2024) closely.
+
+It has since grown beyond the paper, in stages:
+
+1. **Efficiency and ergonomics** — KV-cache decoding (O(n) instead of O(n²) generation), top-k-restricted margin computation, and a HuggingFace `LogitsProcessor` so SASA composes with `model.generate()` and beam search.
+2. **Architecture-general steering** — a narrow `BackboneAdapter` protocol makes SASA work on anything with per-step logits and readable hidden states: Transformers, SSMs (`MambaAdapter`), hybrids (`JambaAdapter`), and encoder–decoder decoders. `MultiLayerSubspaceLearner` learns per-layer subspaces with separability-based layer selection or ensemble margins.
+3. **Robustness** — margin-gated alpha (steer only near the toxic boundary) and a circuit breaker (abort after k consecutive toxic-side steps), aimed at jailbreak and abliteration resistance. Because SASA lives outside the weights, weight-space attacks cannot remove it.
+4. **Research program** — TSM-MA (transferred subspace margins with multi-attribute composition, Phase 3 of `docs/ROADMAP.md`), margin steering for diffusion LMs (`docs/DIFFUSION.md`), and a training-time tamper-resistant analogue (issue #47).
+
+See `docs/ROADMAP.md` for the phased plan and `docs/RESULTS.md` for what has actually been measured.
+
 ## Overview
 
 SASA is a controlled decoding algorithm that leverages the internal representations of language models to steer text generation away from toxic content. Unlike existing approaches, SASA requires no external reward models, no retraining, and no fine-tuning. It operates purely at inference time by learning linear subspaces that characterize toxic versus non-toxic content.
@@ -135,6 +148,8 @@ Based on the original paper, SASA achieves significant toxicity reduction while 
 
 SASA maintains comparable perplexity to baseline models, indicating that fluency is preserved while toxicity is reduced.
 
+**Scope note:** these are single-model (GPT-2), single-alpha, automatic-metric results from the initial implementation. For the full status — what is measured vs. what is pending the pre-registered re-run — see **`docs/RESULTS.md`**.
+
 ## Architecture
 
 The implementation consists of three main components:
@@ -163,6 +178,9 @@ Additional documentation is available in the `docs/` directory:
 
 - **ARCHITECTURE.md**: Detailed technical architecture and design decisions
 - **TESTING.md**: Testing methodology and dataset information
+- **RESULTS.md**: What has been measured, with honest caveats and pre-registered criteria
+- **ROADMAP.md**: Phased improvement plan (evaluation hardening, multi-model support, TSM-MA)
+- **DIFFUSION.md**: Margin steering for diffusion language models (research track)
 
 ## Citation
 
