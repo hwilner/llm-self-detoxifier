@@ -60,6 +60,12 @@ For each open choice we list **both options** and a **selection rule**. A choice
 - **Option B — Ridge regression.** Fit an unconstrained linear map with L2 regularization. Pros: strictly more expressive, closed-form, regularization controls overfitting on small paired sets. Cons: can distort geometry (margins may be miscalibrated after transfer); adds a regularization hyperparameter.
 - **Selection rule:** fit both on the same paired data; pick by **held-out margin-preservation error** (correlation between transferred margins and directly computed target margins on unseen prompts). Orthogonal Procrustes wins ties (simpler, more interpretable). If ridge wins by >10% relative margin-preservation error, adopt ridge and record the orthogonality failure as a finding.
 
+### U5. Utility floor: perplexity alone vs generation-quality metrics (issue #41)
+
+- **Option A — Perplexity only** (ΔPPL ≤ +1 on WikiText, as used in U2 and Phase 3 criteria). Pros: cheap, standard, comparable to the SASA paper. Cons: PPL can look fine under steering while semantic quality degrades (repetition, topic drift, degenerate politeness); it is a weak proxy for "fluency preserved".
+- **Option B — Perplexity + generation-quality floor.** Add MAUVE against unsteered baseline generations (primary) and a pairwise win-rate judged by a reference LLM or human annotators (secondary). Pros: catches semantic-quality regressions PPL misses; MAUVE is reproducible and cheap at benchmark scale. Cons: MAUVE needs a decent-sized generation set (≥1k samples for stability); win-rate introduces a judge dependency.
+- **Selection rule (resolved 2026-10-07, before the Phase 1 pre-registered re-run):** adopt **Option B**. Pre-registered floor for any claim of "fluency preserved": **MAUVE(SASA, baseline) ≥ baseline-self-MAUVE − 0.05**, **win-rate vs baseline ≥ 45%** (two-sided, prompt-level bootstrap CI per U3), and **ΔPPL ≤ +1** as before. A result that improves toxicity but violates the floor is reported as a toxicity/utility trade-off, not as fluency-preserving. The floor applies to Phase 1 re-runs, Phase 2 alpha-scheduling decisions (U2), and all Phase 3 transfer/composition claims.
+
 ## Evaluation-selection decision flowchart
 
 ```mermaid
