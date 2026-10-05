@@ -8,6 +8,8 @@ This package provides:
 - SubspaceLearner: Learn toxic/non-toxic subspaces from embeddings
 - SASASampler: Generate text with toxicity reduction
 - BaselineSampler: Standard sampling for comparison
+- SASALogitsProcessor: SASA steering inside `model.generate()`
+- BackboneAdapter / HFTransformerAdapter: architecture-agnostic model access
 """
 
 from .subspace_learner import (
@@ -19,8 +21,14 @@ from .sampler import (
     SASASampler,
     BaselineSampler
 )
+from .logits_processor import SASALogitsProcessor
+from .adapters import (
+    AdapterOutput,
+    BackboneAdapter,
+    HFTransformerAdapter
+)
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "SubspaceLearner",
@@ -28,4 +36,8 @@ __all__ = [
     "extract_embeddings_from_model",
     "SASASampler",
     "BaselineSampler",
+    "SASALogitsProcessor",
+    "AdapterOutput",
+    "BackboneAdapter",
+    "HFTransformerAdapter",
 ]
