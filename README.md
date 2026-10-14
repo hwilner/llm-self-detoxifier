@@ -1,6 +1,6 @@
 # SASA: Self-disciplined Autoregressive Sampling for LLM Detoxification
 
-An implementation of **SASA (Self-disciplined Autoregressive Sampling)** from the paper "Large Language Models can be Strong Self-Detoxifiers" by Ko et al. (2024). This repository provides a lightweight, training-free method to reduce toxic output generation in large language models.
+Started as an educational implementation of the SASA self-detoxification paper; now an architecture-general, robustness-focused steering toolkit and research program.
 
 ## Overview
 
