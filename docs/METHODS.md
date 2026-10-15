@@ -60,6 +60,14 @@ For each open choice we list **both options** and a **selection rule**. A choice
 - **Option B — Ridge regression.** Fit an unconstrained linear map with L2 regularization. Pros: strictly more expressive, closed-form, regularization controls overfitting on small paired sets. Cons: can distort geometry (margins may be miscalibrated after transfer); adds a regularization hyperparameter.
 - **Selection rule:** fit both on the same paired data; pick by **held-out margin-preservation error** (correlation between transferred margins and directly computed target margins on unseen prompts). Orthogonal Procrustes wins ties (simpler, more interpretable). If ridge wins by >10% relative margin-preservation error, adopt ridge and record the orthogonality failure as a finding.
 
+### U5. Utility floor: MAUVE vs pairwise win-rate (semantic quality under steering)
+
+Perplexity can look fine under steering while semantic quality degrades, so PPL alone is not a sufficient utility guard. Every full run must therefore also clear the utility floor fixed here, alongside the ΔPPL ≤ +1 perplexity criterion. This floor applies to the Phase 1 evaluation-hardening re-run and to all Phase 3 (TSM-MA) claims.
+
+- **Option A — MAUVE** (distribution-level similarity between steered generations and the unsteered `BaselineSampler` reference distribution on identical prompts). Pros: automatic, corpus-level, sensitive to semantic drift that perplexity misses, reproducible at fixed seeds. Cons: needs a minimum sample size to be stable; the score is not interpretable per generation.
+- **Option B — Pairwise win-rate** (head-to-head quality judgment of steered vs baseline continuations of the same prompt). Pros: interpretable per pair; can reuse the human spot-check protocol (`docs/HUMAN_EVAL_PROTOCOL.md`) so the win-rate can be human-based. Cons: requires a judge, and judge choice is its own research decision; noisier on small samples.
+- **Selection rule:** MAUVE is the **primary** utility-floor metric on every full run; pairwise win-rate is reported alongside as secondary whenever a judge is available, and is the primary check on any subset covered by human spot-checks. **Pre-registered floor, fixed before full runs:** MAUVE(steered vs unsteered reference) ≥ 0.90, and steered pairwise win-rate ≥ 45% (ties count as half-wins). A configuration that fails the floor fails the claim regardless of toxicity gains; the failure is reported, not tuned around — thresholds are not adjusted after results are seen.
+
 ## Evaluation-selection decision flowchart
 
 ```mermaid
